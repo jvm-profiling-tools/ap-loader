@@ -74,21 +74,9 @@
                     <executable>sh</executable>
                     <workingDirectory>${basedir}</workingDirectory>
                     <arguments>
-                        <argument>-c</argument>
-                        <argument>
-                            mkdir -p target/classes/libs
-                            cp
-                            ${basedir}/ap-releases/async-profiler-${project.versionPlatform}/build/libasyncProfiler.so \
-                            ${basedir}/target/classes/libs/libasyncProfiler-${project.versionPlatform}.so
-                            cp ${basedir}/ap-releases/async-profiler-${project.versionPlatform}/build/jattach \
-                            ${basedir}/target/classes/libs/jattach-${project.versionPlatform}
-                            cp ${basedir}/ap-releases/async-profiler-${project.versionPlatform}/profiler.sh \
-                            ${basedir}/target/classes/libs/profiler-${project.versionPlatform}.sh
-                            ls target/classes/libs > target/classes/libs/index;
-                            unzip -o ap-releases/async-profiler-${project.versionPlatform}/build/async-profiler.jar
-                            "*.class" \
-                            -d ${basedir}/target/classes
-                        </argument>
+                        <argument>${basedir}/bin/copy_libs.sh</argument>
+                        <argument>${basedir}</argument>
+                        <argument>${project.versionPlatform}</argument>
                     </arguments>
                     <environmentVariables>
                         <LANG>en_US</LANG>
@@ -137,6 +125,19 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>2.2.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <artifactId>maven-deploy-plugin</artifactId>
                 <version>2.8.2</version>
                 <executions>
@@ -150,28 +151,18 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>2.2.1</version>
+                <groupId>org.simplify4u.plugins</groupId>
+                <artifactId>sign-maven-plugin</artifactId>
+                <version>1.0.1</version>
                 <executions>
                     <execution>
-                        <id>attach-sources</id>
                         <goals>
-                            <goal>jar-no-fork</goal>
+                            <goal>sign</goal>
                         </goals>
                     </execution>
                 </executions>
             </plugin>
         </plugins>
-        <resources>
-            <resource>
-                <directory>${basedir}/ap-releases/async-profiler-${project.versionPlatform}/build</directory>
-                <targetPath>${basedir}/target/classes/libs</targetPath>
-                <includes>
-                    <include>converter.jar</include>
-                </includes>
-            </resource>
-        </resources>
     </build>
     <dependencies>
         <dependency>

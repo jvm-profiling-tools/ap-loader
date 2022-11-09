@@ -16,8 +16,11 @@
 
 package one.profiler;
 
+import dev.dirs.ProjectDirectories;
+
 import java.io.*;
 import java.lang.instrument.Instrumentation;
+import java.lang.management.ManagementFactory;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,8 +28,6 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import dev.dirs.ProjectDirectories;
 
 /**
  * Allows to work with the async-profiler libraries and tools stored in the resources folder.
@@ -41,15 +42,13 @@ import dev.dirs.ProjectDirectories;
  */
 public final class AsyncProfilerLoader {
 
-  private static final String LIBRARY_BASE_NAME = "libasyncProfiler";
-  private static final String JATTACH_BASE_NAME = "jattach";
-
   private static String librarySuffix;
   private static Path extractedAsyncProfiler;
   private static Path extractedConverter;
   private static Path extractedJattach;
   private static Path extractedProfiler;
   private static Path extractionDir;
+  private static List<String> availableVersions;
   private static String version;
 
   private static String getCurrentJARFileName() {
@@ -73,17 +72,29 @@ public final class AsyncProfilerLoader {
     AsyncProfilerLoader.extractionDir = extractionDir;
   }
 
+  /**
+   * Set the used version of async-profiler. This is required if there are multiple versions of this
+   * library in the dependencies.
+   *
+   * @param version set version of async-profiler to use
+   */
+  public static void setVersion(String version) throws IOException {
+    deleteExtractionDirectory();
+    AsyncProfilerLoader.version = version;
+  }
+
   /** Deletes the directory used for extraction */
   public static void deleteExtractionDirectory() throws IOException {
-    if (extractionDir != null && Files.exists(extractionDir)) {
-      try (Stream<Path> stream = Files.walk(extractionDir)) {
+    if (extractionDir != null) {
+      try (Stream<Path> stream = Files.walk(getExtractionDirectory())) {
         stream.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
       }
-      extractedAsyncProfiler = null;
-      extractedConverter = null;
-      extractedJattach = null;
-      extractedProfiler = null;
     }
+    extractedAsyncProfiler = null;
+    extractedConverter = null;
+    extractedJattach = null;
+    extractedProfiler = null;
+    extractionDir = null;
   }
 
   /** Returns the directory used for storing the extracted libraries, binaries and JARs */
@@ -99,116 +110,76 @@ public final class AsyncProfilerLoader {
     return extractionDir;
   }
 
-  private static boolean isFilePresentInExtractionDirectory(String name) {
-    try {
-      return Files.exists(getExtractionDirectory().resolve(name));
-    } catch (IOException e) {
-      return false;
-    }
-  }
-
   /**
    * @throws IllegalStateException if OS or Arch not supported
    */
   private static String getLibrarySuffix() {
-    String os = System.getProperty("os.name").toLowerCase();
-    String arch = System.getProperty("os.arch").toLowerCase();
-    if (os.contains("linux")) {
-      if (arch.contains("arm") || arch.contains("aarch64")) {
-        return "linux-aarch64.so";
-      } else if (arch.contains("64")) {
-        if (isOnGLibc()) {
-          return "linux-x64.so";
-        } else if (isOnMusl()) {
-          return "linux-x64-musl.so";
-        } else {
-          throw new IllegalStateException("Async-profiler does not work with the given libc");
-        }
-      } else {
-        throw new IllegalStateException("Async-profiler does not work on Linux " + arch);
-      }
-    } else if (os.contains("mac")) {
-      return "macos.so";
-    } else {
-      throw new IllegalStateException("Async-profiler does not work on " + os);
-    }
-  }
-
-  /**
-   * @throws IllegalStateException if OS or Arch not supported
-   */
-  private static String getLibrarySuffixCached() {
     if (librarySuffix == null) {
-      librarySuffix = getLibrarySuffix();
+      String version = getVersion();
+      String os = System.getProperty("os.name").toLowerCase();
+      String arch = System.getProperty("os.arch").toLowerCase();
+      if (os.startsWith("linux")) {
+        if (arch.equals("arm64") || arch.equals("aarch64")) {
+          librarySuffix = version + "-linux-aarch64.so";
+        } else if (arch.equals("x86_64") || arch.equals("x64") || arch.equals("amd64")) {
+          if (isOnGLibc()) {
+            librarySuffix = version + "-linux-x64.so";
+          } else if (isOnMusl()) {
+            librarySuffix = version + "-linux-x64-musl.so";
+          } else {
+            throw new IllegalStateException("Async-profiler does not work with the given libc");
+          }
+        } else {
+          throw new IllegalStateException("Async-profiler does not work on Linux " + arch);
+        }
+      } else if (os.startsWith("macosx") || os.startsWith("mac os x")) {
+        librarySuffix = version + "-macos.so";
+      } else {
+        throw new IllegalStateException("Async-profiler does not work on " + os);
+      }
     }
     return librarySuffix;
   }
 
-  private static List<String> getAvailableLibraries() {
-    return getAvailableLibs().stream()
-        .map(
-            u -> {
-              String[] parts = u.getFile().split("/");
-              return parts[parts.length - 1];
-            })
-        .collect(Collectors.toList());
-  }
+  /** Get available versions of the library */
+  public static List<String> getAvailableVersions() {
+    if (availableVersions == null) {
+      availableVersions = new ArrayList<>();
 
-  private static List<URL> getAvailableLibs() {
-    List<URL> libs = new ArrayList<>();
-    try {
-      Enumeration<URL> indexFiles =
-          AsyncProfilerLoader.class.getClassLoader().getResources("libs/index");
-      while (indexFiles.hasMoreElements()) {
-        URL indexFile = indexFiles.nextElement();
-        List<String> matchingResources = new ArrayList<>();
-        try (BufferedReader reader =
-            new BufferedReader(new InputStreamReader(indexFile.openStream()))) {
-          String line;
-          while ((line = reader.readLine()) != null) {
-            if (line.startsWith(LIBRARY_BASE_NAME)
-                || line.startsWith(JATTACH_BASE_NAME)
-                || line.startsWith("profiler")) {
-              matchingResources.add(line);
+      try {
+        Enumeration<URL> indexFiles =
+            AsyncProfilerLoader.class.getClassLoader().getResources("libs/ap-version");
+        while (indexFiles.hasMoreElements()) {
+          URL indexFile = indexFiles.nextElement();
+          try (BufferedReader reader =
+              new BufferedReader(new InputStreamReader(indexFile.openStream()))) {
+            String line = reader.readLine();
+            if (line != null) {
+              availableVersions.add(line);
             }
           }
         }
-        for (String resource : matchingResources) {
-          Enumeration<URL> lib =
-              AsyncProfilerLoader.class.getClassLoader().getResources("libs/" + resource);
-          while (lib.hasMoreElements()) {
-            libs.add(lib.nextElement());
-          }
-        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        return Collections.emptyList();
       }
-      return libs;
-    } catch (IOException e) {
-      e.printStackTrace();
-      return Collections.emptyList();
     }
+    return availableVersions;
   }
 
   /**
-   * Returns the version of the included async-profiler library
+   * Returns the version of the included async-profiler library (or the version set by {@link
+   * #setVersion(String)}
    *
    * @throws IllegalStateException if the version could not be determined
    */
   public static String getVersion() {
     if (version == null) {
-      List<String> versions =
-          getAvailableLibs().stream()
-              .map(
-                  u -> {
-                    String[] parts = u.getFile().split("/");
-                    parts = parts[parts.length - 1].split("-");
-                    return parts[1];
-                  })
-              .distinct()
-              .collect(Collectors.toList());
-      if (versions.size() > 1) {
-        throw new IllegalStateException("Multiple versions of async-profiler found: " + versions);
+      if (getAvailableVersions().size() > 1) {
+        throw new IllegalStateException(
+            "Multiple versions of async-profiler found: " + getAvailableVersions());
       }
-      version = versions.get(0);
+      version = getAvailableVersions().get(0);
     }
     return version;
   }
@@ -235,6 +206,46 @@ public final class AsyncProfilerLoader {
     }
   }
 
+  private static String getAsyncProfilerFileName() {
+    return "libasyncProfiler-" + getLibrarySuffix();
+  }
+
+  private static String getConverterFileName() {
+    return "converter-" + getVersion() + ".jar";
+  }
+
+  private static String getJattachFileName() {
+    return "jattach-" + getLibrarySuffix().replace(".so", "");
+  }
+
+  private static String getProfilerFileName() {
+    return "profiler-" + getVersion() + ".sh";
+  }
+
+  private static boolean hasFileInResources(String fileName) {
+    try {
+      Enumeration<URL> indexFiles =
+          AsyncProfilerLoader.class.getClassLoader().getResources("libs/" + fileName);
+      return indexFiles.hasMoreElements();
+    } catch (IOException e) {
+      e.printStackTrace();
+      return false;
+    }
+  }
+
+  private static URL getUrl(String fileName) {
+    try {
+      Enumeration<URL> indexFiles =
+          AsyncProfilerLoader.class.getClassLoader().getResources("libs/" + fileName);
+      if (indexFiles.hasMoreElements()) {
+        return indexFiles.nextElement();
+      }
+      throw new IllegalStateException("Could not find file " + fileName);
+    } catch (IOException e) {
+      throw new IllegalStateException("Could not find file " + fileName, e);
+    }
+  }
+
   /**
    * Checks if an async-profiler library for the current OS, architecture and glibc is available in
    * this JAR.
@@ -242,123 +253,99 @@ public final class AsyncProfilerLoader {
    * @return true if a library is available, false otherwise
    */
   public static boolean isSupported() {
-    return getAvailableLibraries().stream().anyMatch(s -> s.endsWith(getLibrarySuffixCached()));
+    return hasFileInResources(getAsyncProfilerFileName());
   }
 
-  private static URL getLibraryURL() {
-    return getAvailableLibs().stream()
-        .filter(url -> url.getFile().endsWith(getLibrarySuffix()))
-        .findFirst()
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "No suitable async-profiler library found in" + " this JAR"));
+  /** Copy from resources if needed */
+  private static Path copyFromResources(String fileName, Path destination) throws IOException {
+    if (!isSupported()) {
+      throw new IllegalStateException(
+          "Async-profiler is not supported on this OS and architecture");
+    }
+    if (Files.exists(destination)) {
+      // already copied sometime before, but certainly the same file as it belongs to the same
+      // async-profiler version
+      return destination;
+    }
+    try {
+      URL url = getUrl(fileName);
+      try (InputStream in = url.openStream()) {
+        Files.copy(in, destination);
+      }
+      return destination;
+    } catch (IOException e) {
+      throw new IOException("Could not copy file " + fileName + " to " + destination, e);
+    }
   }
 
   /**
    * Extracts the converter JAR
    *
    * @return path to the extracted converter JAR
+   * @throws IllegalStateException if OS or arch are not supported
    * @throws IOException if the extraction fails
    */
   public static Path getConverterPath() throws IOException {
     if (extractedConverter == null) {
-      Path converterPath = getExtractionDirectory().resolve("converter.jar");
-      if (isFilePresentInExtractionDirectory("converter.jar")) {
-        extractedConverter = converterPath;
-        return extractedConverter;
-      }
-      URL converterURL =
-          AsyncProfilerLoader.class.getClassLoader().getResource("libs/converter.jar");
-      if (converterURL == null) {
-        throw new IllegalStateException("No converter JAR found in this JAR");
-      }
-      try (InputStream in = converterURL.openStream()) {
-        Files.copy(in, converterPath);
-      }
-      extractedConverter = converterPath;
+      extractedConverter =
+          copyFromResources(
+              getConverterFileName(), getExtractionDirectory().resolve("converter.jar"));
     }
     return extractedConverter;
   }
 
-  private static String getJattachSuffix() {
-    return getLibrarySuffix().replace(".so", "");
-  }
-
-  private static String getProfilerSuffix() {
-    return getLibrarySuffix().replace(".so", ".sh");
-  }
-
   /**
-   * Extracts the jattach binary if it is included.
+   * Extracts the jattach tool
    *
-   * @return path to the extracted jattach
-   * @throws IllegalStateException if jattach is included
+   * @return path to the extracted jattach tool
+   * @throws IllegalStateException if OS or arch are not supported
    * @throws IOException if the extraction fails
    */
   public static Path getJattachPath() throws IOException {
     if (extractedJattach == null) {
-      if (isFilePresentInExtractionDirectory("jattach")) {
-        extractedJattach = getExtractionDirectory().resolve("jattach");
-        return extractedJattach;
+      Path path =
+          copyFromResources(getJattachFileName(), getExtractionDirectory().resolve("jattach"));
+      if (!path.toFile().setExecutable(true)) {
+        throw new IOException("Could not make jattach (" + path + ") executable");
       }
-      String suffix = getJattachSuffix();
-      URL jattachURL =
-          getAvailableLibs().stream()
-              .filter(
-                  u -> {
-                    String[] parts = u.getFile().split("/");
-                    String lastPart = parts[parts.length - 1];
-                    return lastPart.startsWith("jattach-") && lastPart.endsWith("-" + suffix);
-                  })
-              .findFirst()
-              .orElseThrow(() -> new IllegalStateException("No jattach binary found in this JAR"));
-      Path jattachPath = getExtractionDirectory().resolve("jattach");
-      try (InputStream in = jattachURL.openStream()) {
-        Files.copy(in, jattachPath);
-      }
-      if (!jattachPath.toFile().setExecutable(true)) {
-        throw new IOException("Could not make jattach (" + jattachPath + ") executable");
-      }
-      extractedJattach = jattachPath;
+      extractedJattach = path;
     }
     return extractedJattach;
   }
 
   /**
-   * Extracts the profiler.sh script if it is included.
+   * Extracts the profiler.sh script
    *
    * @return path to the extracted profiler.sh
-   * @throws IllegalStateException if profiler.sh is included
+   * @throws IllegalStateException if OS or arch are not supported
    * @throws IOException if the extraction fails
    */
   private static Path getProfilerPath() throws IOException {
     if (extractedProfiler == null) {
-      if (isFilePresentInExtractionDirectory("profiler.sh")) {
-        extractedProfiler = getExtractionDirectory().resolve("profiler.sh");
-        return extractedProfiler;
+      Path path =
+          copyFromResources(getProfilerFileName(), getExtractionDirectory().resolve("profiler.sh"));
+      if (!path.toFile().setExecutable(true)) {
+        throw new IOException("Could not make profiler.sh (" + path + ") executable");
       }
-      String suffix = getProfilerSuffix();
-      URL profilerURL =
-          getAvailableLibs().stream()
-              .filter(
-                  u -> {
-                    String[] parts = u.getFile().split("/");
-                    String lastPart = parts[parts.length - 1];
-                    return lastPart.startsWith("profiler-") && lastPart.endsWith("-" + suffix);
-                  })
-              .findFirst()
-              .orElseThrow(() -> new IllegalStateException("No profiler.sh found in this JAR"));
-      Path profilerPath = getExtractionDirectory().resolve("profiler.sh");
-      try (InputStream in = profilerURL.openStream()) {
-        Files.copy(in, profilerPath);
-      }
-      if (!profilerPath.toFile().setExecutable(true)) {
-        throw new IOException("Could not make profiler.sh (" + profilerPath + ") executable");
-      }
-      extractedProfiler = profilerPath;
+      extractedProfiler = path;
     }
     return extractedProfiler;
+  }
+
+  /**
+   * Extracts the async-profiler and returns the path to the extracted file.
+   *
+   * @return the path to the extracted library
+   * @throws IOException if the library could not be loaded
+   * @throws IllegalStateException if OS or Arch are not supported
+   */
+  public static Path getAsyncProfilerPath() throws IOException {
+    if (extractedAsyncProfiler == null) {
+      extractedAsyncProfiler =
+          copyFromResources(
+              getAsyncProfilerFileName(), getExtractionDirectory().resolve("libasyncProfiler.so"));
+    }
+    return extractedAsyncProfiler;
   }
 
   /** Output and error output of a successful process execution. */
@@ -407,13 +394,14 @@ public final class AsyncProfilerLoader {
    *
    * @throws IOException if something went wrong (e.g. the jattach binary is not found or the
    *     execution fails)
+   * @throws IllegalStateException if OS or Arch are not supported
    */
   public static ExecutionResult executeJattach(String... args) throws IOException {
-    return executeCommand("jattach", processJattachArgs(args), new String[0]);
+    return executeCommand("jattach", processJattachArgs(args));
   }
 
   private static void executeJattachInteractively(String[] args) throws IOException {
-    executeCommandInteractively("jattach", processJattachArgs(args), new String[0]);
+    executeCommandInteractively("jattach", processJattachArgs(args));
   }
 
   private static String[] processConverterArgs(String[] args) throws IOException {
@@ -434,17 +422,20 @@ public final class AsyncProfilerLoader {
    * java -cp converter.jar</code>
    *
    * @throws IOException if something went wrong (e.g. the execution fails)
+   * @throws IllegalStateException if OS or Arch are not supported
    */
   public static ExecutionResult executeConverter(String... args) throws IOException {
-    return executeCommand("converter", processConverterArgs(args), new String[0]);
+    return executeCommand("converter", processConverterArgs(args));
   }
 
   private static void executeConverterInteractively(String[] args) throws IOException {
-    executeCommandInteractively("converter", processConverterArgs(args), new String[0]);
+    executeCommandInteractively("converter", processConverterArgs(args));
   }
 
-  private static String[] getProfilerShEnv() throws IOException {
-    return new String[] {"JATTACH", getJattachPath().toString()};
+  private static String[] getEnv() throws IOException {
+    return new String[] {
+      "JATTACH=" + getJattachPath().toString(), "PROFILER=" + getAsyncProfilerPath()
+    };
   }
 
   private static String[] processProfilerArgs(String[] args) throws IOException {
@@ -461,11 +452,11 @@ public final class AsyncProfilerLoader {
    *
    * <p>
    *
-   * @throws IOException if something went wrong (e.g. the profiler.sh is not found or the execution
-   *     fails)
+   * @throws IOException if something went wrong (e.g. the execution fails)
+   * @throws IllegalStateException if OS or Arch are not supported
    */
   public static ExecutionResult executeProfiler(String... args) throws IOException {
-    return executeCommand("profiler", processProfilerArgs(args), getProfilerShEnv());
+    return executeCommand("profiler", processProfilerArgs(args));
   }
 
   private static String getApplicationCall() {
@@ -481,9 +472,8 @@ public final class AsyncProfilerLoader {
   }
 
   private static void executeProfilerInteractively(String[] args) throws IOException {
-    String[] env = getProfilerShEnv();
     String[] command = processProfilerArgs(args);
-    Process proc = Runtime.getRuntime().exec(command, env);
+    Process proc = Runtime.getRuntime().exec(command, getEnv());
     try (BufferedReader stdout = new BufferedReader(new InputStreamReader(proc.getInputStream()));
         BufferedReader stderr = new BufferedReader(new InputStreamReader(proc.getErrorStream()))) {
       String stdoutStr = stdout.lines().collect(Collectors.joining("\n"));
@@ -500,14 +490,15 @@ public final class AsyncProfilerLoader {
     }
   }
 
-  private static ExecutionResult executeCommand(
-      String name, String[] args, String[] environmentVariables) throws IOException {
-    Process proc = Runtime.getRuntime().exec(args, environmentVariables);
-    try (BufferedReader stdout = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-        BufferedReader stderr = new BufferedReader(new InputStreamReader(proc.getErrorStream()))) {
+  private static ExecutionResult executeCommand(String name, String[] args) throws IOException {
+    Process process = Runtime.getRuntime().exec(args, getEnv());
+    try (BufferedReader stdout =
+            new BufferedReader(new InputStreamReader(process.getInputStream()));
+        BufferedReader stderr =
+            new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
       String stdoutStr = stdout.lines().collect(Collectors.joining("\n"));
       String stderrStr = stderr.lines().collect(Collectors.joining("\n"));
-      int exitCode = proc.waitFor();
+      int exitCode = process.waitFor();
       if (exitCode != 0) {
         throw new IOException(
             name
@@ -526,13 +517,14 @@ public final class AsyncProfilerLoader {
     }
   }
 
-  private static void executeCommandInteractively(
-      String name, String[] args, String[] environmentVariables) throws IOException {
+  private static void executeCommandInteractively(String name, String[] args) throws IOException {
     ProcessBuilder pb = new ProcessBuilder(args);
     pb.inheritIO();
     Map<String, String> env = pb.environment();
-    for (int i = 0; i < environmentVariables.length; i += 2) {
-      env.put(environmentVariables[i], environmentVariables[i + 1]);
+    String[] envArray = getEnv();
+    for (String s : envArray) {
+      String[] parts = s.split("=", 2);
+      env.put(parts[0], parts[1]);
     }
     Process proc = pb.start();
     try {
@@ -562,68 +554,78 @@ public final class AsyncProfilerLoader {
    * @return the loaded async-profiler
    * @throws UnsatisfiedLinkError if the library could not be loaded
    * @throws IOException if the library could not be loaded
-   * @throws IllegalStateException if OS or arch are not supported or the library is not included at
-   *     all
+   * @throws IllegalStateException if OS or arch are not supported
    */
   public static AsyncProfiler load() throws IOException {
     return AsyncProfiler.getInstance(getAsyncProfilerPath().toString());
-  }
-
-  /**
-   * Extracts the async-profiler and returns the path to the extracted file.
-   *
-   * @return the path to the extracted library
-   * @throws IOException if the library could not be loaded
-   * @throws IllegalStateException if OS or Arch are not supported or the library is not included at
-   *     all
-   */
-  public static Path getAsyncProfilerPath() throws IOException {
-    if (!isSupported()) {
-      throw new IllegalStateException(
-          "Async-profiler is not supported on this OS and architecture, using this " + "JAR");
-    }
-    if (extractedAsyncProfiler == null) {
-      extractedAsyncProfiler = getExtractionDirectory().resolve(LIBRARY_BASE_NAME);
-      if (!isFilePresentInExtractionDirectory(LIBRARY_BASE_NAME)) {
-        try (InputStream in = getLibraryURL().openStream()) {
-          Files.copy(in, extractedAsyncProfiler);
-        }
-      }
-    }
-    return extractedAsyncProfiler;
   }
 
   public static void premain(String agentArgs, Instrumentation instrumentation) {
     agentmain(agentArgs, instrumentation);
   }
 
-  public static void agentmain(String agentArgs, Instrumentation instrumentation) {
-    try {
-      load().execute(agentArgs);
-    } catch (IOException e) {
-      e.printStackTrace();
+  private static int getProcessId() {
+    String name = ManagementFactory.getRuntimeMXBean().getName();
+    int index = name.indexOf('@');
+    if (index < 1) {
+      throw new IllegalStateException("Could not get process id from " + name);
     }
+    try {
+      return Integer.parseInt(name.substring(0, index));
+    } catch (NumberFormatException e) {
+      throw new IllegalStateException("Could not get process id from " + name);
+    }
+  }
+
+  /**
+   * Attach the extracted async-profiler agent to the current JVM.
+   *
+   * @param arguments arguments string passed to the agent, might be null
+   * @throws IllegalStateException if the agent could not be attached
+   */
+  public static void attach(String arguments) {
+    try {
+      List<String> args = new ArrayList<>();
+      args.add(getProcessId() + "");
+      args.add("load");
+      args.add(getAsyncProfilerPath().toString());
+      args.add("true");
+      if (arguments != null) {
+        args.add(arguments);
+      }
+      executeJattach(args.toArray(new String[0]));
+    } catch (Exception e) {
+      throw new IllegalStateException("Could not attach to the currentd process", e);
+    }
+  }
+
+  public static void agentmain(String agentArgs, Instrumentation instrumentation) {
+    attach(agentArgs);
   }
 
   private static void printUsage(PrintStream out) {
     out.println("Usage: " + getApplicationCall() + " <command> [args]");
     out.println("Commands:");
-    out.println("  help        show this help");
+    out.println("  help         show this help");
     if (isSupported()) {
-      out.println("  jattach     run the included jattach binary");
-      out.println("  profiler    run the included profiler.sh");
+      out.println("  jattach      run the included jattach binary");
+      out.println("  profiler     run the included profiler.sh");
+      out.println("  agentpath    prints the path of the extracted async-profiler agent");
+      out.println("  jattachpath  prints the path of the extracted jattach binary");
     }
-    out.println("  supported   fails if this JAR does not include a profiler");
-    out.println("              for the current OS and architecture");
-    out.println("  converter   run the included converter JAR");
-    out.println("  version     version of the included async-profiler");
-    out.println("  clear       clear the directory used for storing extracted files");
+    out.println("  supported    fails if this JAR does not include a profiler");
+    out.println("               for the current OS and architecture");
+    out.println("  converter    run the included converter JAR");
+    out.println("  version      version of the included async-profiler");
+    out.println("  clear        clear the directory used for storing extracted files");
   }
 
   private static void checkCommandAvailability(String command) {
     switch (command) {
       case "jattach":
       case "profiler":
+      case "agentpath":
+      case "jattachpath":
         if (!isSupported()) {
           System.err.println(
               "The "
@@ -652,6 +654,12 @@ public final class AsyncProfilerLoader {
         break;
       case "profiler":
         executeProfilerInteractively(commandArgs);
+        break;
+      case "agentpath":
+        System.out.println(getAsyncProfilerPath());
+        break;
+      case "jattachpath":
+        System.out.println(getJattachPath());
         break;
       case "supported":
         if (!isSupported()) {

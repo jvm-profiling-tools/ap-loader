@@ -153,15 +153,6 @@
                 </executions>
             </plugin>
         </plugins>
-        <resources>
-            <resource>
-                <directory>${basedir}/ap-releases/async-profiler-${project.versionPlatform}/build</directory>
-                <targetPath>${basedir}/target/classes/libs</targetPath>
-                <includes>
-                    <include>converter.jar</include>
-                </includes>
-            </resource>
-        </resources>
     </build>
     <dependencies>
         <dependency>
