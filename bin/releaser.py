@@ -178,8 +178,8 @@ def build_tests(release: str, java_cmd: str = ""):
         if file.endswith(".sh") and not file.startswith("fd"):
             with open(f"{test_folder}/{file}") as f:
                 content = f.read()
-            content = content\
-                .replace("../profiler.sh ", f"java -jar '{release_file}' profiler ")\
+            content = content \
+                .replace("../profiler.sh ", f"java -jar '{release_file}' profiler ") \
                 .replace("-agentpath:../build/libasyncProfiler.so", f"-javaagent:{release_file}")
             with open(f"{test_folder}/{file}", "w") as f:
                 f.write(content)
@@ -333,21 +333,22 @@ def deploy_github(release: str):
             platform_paths.append(path)
 
         flags_str = f"-F {changelog_file} -t '{title}' {'--latest' if is_latest else ''}" \
-              f" {'--prerelease' if prerelease else ''}"
+                    f" {'--prerelease' if prerelease else ''}"
         paths_str = " ".join(f'"{p}"' for p in platform_paths)
         cmd = f"gh release create {release} {flags_str} {paths_str}"
         try:
-            subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=subprocess.DEVNULL,
+                                  stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError:
             # this is either a real problem or it means that the release already exists
             # in the latter case, we can just update it
             cmd = f"gh release edit {release} {flags_str}; gh release upload {release} {paths_str} --clobber"
             try:
-                subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=subprocess.DEVNULL,
+                                      stderr=subprocess.DEVNULL)
             except subprocess.CalledProcessError:
                 os.system(
                     f"cd {CURRENT_DIR}; {cmd}")
-
 
 
 def deploy(release: str, snapshot: bool = True):
@@ -364,7 +365,8 @@ def clear():
 
 
 def parse_cli_args() -> Tuple[List[str], Optional[str]]:
-    available_commands = ["current_version", "versions", "download", "build", "test", "deploy_mvn", "deploy_gh", "deploy",
+    available_commands = ["current_version", "versions", "download", "build", "test", "deploy_mvn", "deploy_gh",
+                          "deploy",
                           "deploy_release", "clear"]
     commands = []
     release = sys.argv[-1] if sys.argv[-1][0].isnumeric() else None

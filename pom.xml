@@ -3,7 +3,6 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <name>ap-loader</name>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader</artifactId>
@@ -98,8 +97,8 @@
                             <mainClass>one.profiler.AsyncProfilerLoader</mainClass>
                         </manifest>
                         <manifestEntries>
-                            <Agent-Class>one.profiler.AsyncProfilerLoader</Agent-Class>
                             <Premain-Class>one.profiler.AsyncProfilerLoader</Premain-Class>
+                            <Agent-Class>one.profiler.AsyncProfilerLoader</Agent-Class>
                         </manifestEntries>
                     </archive>
                 </configuration>
@@ -136,6 +135,17 @@
                         <goals>
                             <goal>jar-no-fork</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-file</id>
+                        <phase>generate-sources</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -183,8 +193,10 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <keyname>${gpg.keyname}</keyname>
-                    <passphrase>${gpg.passphrase}</passphrase>
+                    <gpgArguments>
+                        <arg>--pinentry-mode</arg>
+                        <arg>loopback</arg>
+                    </gpgArguments>
                 </configuration>
             </plugin>
             <plugin>

@@ -35,3 +35,4 @@ echo "Extracting $first_folder/build/async-profiler.jar"
 python3 "$OWN_DIR/timestamp.py" > "target/classes/libs/ap-timestamp-$version"
 echo "$version" > target/classes/libs/ap-version
 unzip -o "$first_folder/build/async-profiler*" "*.class" -d "target/classes"
+cp ap-releases/async-profiler-$version-code/src/api/one/profiler/*.java src/main/java/one/profiler

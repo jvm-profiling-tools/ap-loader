@@ -29,3 +29,4 @@ python3 "$OWN_DIR/profile_processor.py" "target/classes/libs/profiler-$version.s
 echo "Extracting $AP_RELEASE/build/async-profiler.jar"
 unzip -o "ap-releases/async-profiler-$VERSION_PLATFORM/build/async-profiler.jar" \
   "*.class" -d "target/classes"
+cp ap-releases/async-profiler-$version-code/src/api/one/profiler/*.java src/main/java/one/profiler
