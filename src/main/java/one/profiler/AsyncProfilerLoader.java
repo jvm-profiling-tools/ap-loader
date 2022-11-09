@@ -389,8 +389,8 @@ public final class AsyncProfilerLoader {
    *
    * <p>It runs the same as jattach with the only exception that every string that ends with
    * "libasyncProfiler.so" is mapped to the extracted async-profiler library for the load command.
-   * One can therefore start/stop the async-profiler via <verb>executeJattach(PID, "load",
-   * "libasyncProfiler.so", true, "start"/"stop")</verb>.
+   * One can therefore start/stop the async-profiler via
+   * <code>executeJattach(PID, "load", "libasyncProfiler.so", true, "start"/"stop")</code>.
    *
    * @throws IOException if something went wrong (e.g. the jattach binary is not found or the
    *     execution fails)

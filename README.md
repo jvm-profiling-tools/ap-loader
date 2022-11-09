@@ -2,23 +2,37 @@ Loader for AsyncProfiler
 ========================
 
 Packages [async-profiler](https://github.com/jvm-profiling-tools/async-profiler) releases in a JAR
-with a `AsyncProfilerLoader` (version 2+) that loads the suitable native library for the current platform.
+with an `AsyncProfilerLoader` (version 2+) that loads the suitable native library for the current platform.
 
 This is usable as a java agent (same arguments as the async-profiler agent) and as the basis for other libraries.
 The real rationale behind this library is that the async-profiler is a nice tool, but it cannot be easily integrated
-into other Java based tools.
+into other Java-based tools.
 
 The wrapper is tested against all relevant tests of the async-profiler tool, ensuring that it has the same behavior.
 
-Take the `all` build and you have a JAR that provides the important features of async-profiler on all supported
+Take the [`all` build](https://github.com/parttimenerd/ap-loader/releases/latest/download/ap-loader-all.jar) and you have a JAR that provides the important features of async-profiler on all supported
 platforms.
 
-A changelog can be found at the async-profiler repository, as this library should rarely change itself.
+A changelog can be found in the async-profiler repository, as this library should rarely change itself.
 
 _This project assumes that you used async-profiler before, if not, don't worry, you can still use this project,
-but be aware that it's documentation refers you to the async-profiler documentation a lot._
+but be aware that its documentation refers you to the async-profiler documentation a lot._
 
 _fdtransfer is currently not supported, feel free to create an issue if you need it._
+
+Download
+--------
+
+You can download the latest release from the 
+[latest release page](https://github.com/parttimenerd/ap-loader/releases/latest/).
+As a shortcut, the wrapper for all platforms can be found 
+[here](https://github.com/parttimenerd/ap-loader/releases/latest/download/ap-loader-all.jar).
+
+It should be up to date with the latest async-profiler release, but if not, feel free to create an issue.
+
+To use the library as a dependency, you can depend on `me.bechberger.ap-loader:<version>-<variant>-SNAPSHOT`
+from the [Sonatype OSS repository](https://s01.oss.sonatype.org/content/repositories/snapshots). 
+See [#usage-in-java-code](Usage in Java Code) for more information. 
 
 Supported Platforms
 -------------------
@@ -33,6 +47,8 @@ The JAR can be obtained in the following variants:
 - `macos`, `linux-x64`, ...: `jattach`, `profiler.sh` and `libasyncProfiler.so` for the given platform
 - `all`: all of the above
 
+Regarding file sizes: The `all` variant are typically around 800KB and the individual variants around 200 to 400KB.
+
 Commands
 --------
 
@@ -42,7 +58,7 @@ Be aware that it is recommended to use run the JVM with the
 `-XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints` flags.
 This improves the accuracy of the profiler.
 
-Overview over the commands:
+Overview of the commands:
 
 ```sh
 Usage: java -jar ap-loader.jar <command> [args]
@@ -81,7 +97,7 @@ See the [GitHub page of jattach](https://github.com/apangin/jattach) for more de
 `java -jar ap-loader.jar profiler` is equivalent to calling the suitable `profiler.sh`:
 
 ```sh
-# Profile a process for a `n` seconds
+# Profile a process for `n` seconds
 java -jar ap-loader.jar profiler -d <n> <pid>
 
 # Profile a process for allocation, CPU and lock events and save the results to a JFR file
@@ -122,17 +138,17 @@ Running as an agent
 -------------------
 
 `java -javaagent:ap-loader.jar=<options>` is equivalent to `java -agentpath:libasyncProfiler.so=<options>`
-with the suitable library.
+with a suitable library.
 This can be used to profile a Java process from the start.
 
 ```sh
-# Profile the application and output a flamegraph
-java -javaagent:/path/to/libasyncProfiler.so=start,event=cpu,file=profile.html <java arguments>
+# Profile the application and output a flame graph
+java -javaagent:ap-loader.jar=start,event=cpu,file=profile.html <java arguments>
 ```
 
 See the [GitHub page of async-profiler](https://github.com/jvm-profiling-tools/async-profiler) for more details.
 
-Using in Java code
+Usage in Java Code
 ------------------
 
 Then you can use the `AsyncProfilerLoader` class to load the native library:
@@ -145,14 +161,13 @@ AsyncProfiler profiler = one.profiler.AsyncProfilerLoader.load();
 the [main API class](https://github.com/jvm-profiling-tools/async-profiler/blob/master/src/api/one/profiler/AsyncProfiler.java)
 from the async-profiler.jar.
 
-The API of the `AsyncProfilerLoader` can be used to execute all commands the CLI programmatically.
+The API of the `AsyncProfilerLoader` can be used to execute all commands of the CLI programmatically.
 
-### Snapsshots
+### Snapshots
 
-We currently only release to snapshop, as the API is not stable yet.
+We currently only release to snapshot, as the API is not stable yet.
 
 ```xml
-
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader</artifactId>
@@ -160,10 +175,9 @@ We currently only release to snapshop, as the API is not stable yet.
 </dependency>
 ```
 
-For example for the all variant of version 2.8.3:
+For example for the `all` variant of version 2.8.3:
 
 ```xml
-
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader</artifactId>

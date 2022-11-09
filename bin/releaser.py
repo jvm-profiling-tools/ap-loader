@@ -7,10 +7,12 @@ to test them.
 It has no dependencies, only requiring Python 3.6+ to be installed.
 """
 import sys
+import tempfile
 import traceback
 import os
 import shutil
 import subprocess
+from pathlib import Path
 from urllib import request
 from typing import Any, Dict, List, Union, Tuple, Optional
 import json
@@ -26,7 +28,10 @@ Commands:
     download          download and prepare the folders for the given release
     build             build the wrappers for the given release
     test              test the given release
-    deploy            deploy the wrappers for the given release, i.e., use "mvn deploy"
+    deploy_mvn        deploy the wrappers for the given release as a snapshot to maven
+    deploy_gh         deploy the wrappers for the given release as a snapshot to GitHub
+    deploy            deploy the wrappers for the given release as a snapshot
+    deploy_release    deploy the wrappers for the given release
     clear             clear the ap-releases and target folders for a fresh start
 
 Environment variables:
@@ -282,6 +287,74 @@ def test_release(release: str):
         test_release_for_java(release)
 
 
+def deploy_maven_platform(release: str, platform: str, snapshot: bool):
+    print(f"Deploy {release} for {platform} to maven")
+    pom = "pom_all.xml" if platform == "all" else "pom.xml"
+    cmd = f"mvn -Dproject.versionPlatform='{release}-{platform}' -Dproject.suffix='{'-SNAPSHOT' if snapshot else ''}' -f {pom} clean deploy"
+    try:
+        subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:
+        os.system(
+            f"cd {CURRENT_DIR}; {cmd}")
+        raise
+
+
+def deploy_maven(release: str, snapshot: bool = True):
+    print(f"Deploy {release}{' snapshot' if snapshot else ''}")
+    for platform in get_release_platforms(release):
+        deploy_maven_platform(release, platform, snapshot)
+    deploy_maven_platform(release, "all", snapshot)
+
+
+def get_changelog(release: str) -> str:
+    url = get_release(release)["html_url"]
+    return f"_Copied from the wrapped [async-profiler release]({url}) by [Andrei Pangin](https://github.com/apangin). " \
+           f"The source code linked below should be ignored._\n\n{get_release_info(release)}"
+
+
+def deploy_github(release: str):
+    changelog = get_changelog(release)
+    is_latest = release == get_most_recent_release()
+    title = f"Loader for {release}: {get_release(release)['name']}"
+    prerelease = get_release(release)["prerelease"]
+    print(f"Deploy {release} ({title}) to GitHub")
+    if not os.path.exists(f"{CURRENT_DIR}/releases/ap-loader-{release}-all.jar"):
+        build_release(release)
+    with tempfile.TemporaryDirectory() as d:
+        changelog_file = f"{d}/CHANGELOG.md"
+        with open(changelog_file, "w") as of:
+            of.write(changelog)
+            of.close()
+        releases_dir = f"{CURRENT_DIR}/releases"
+        platform_paths = []
+        for platform in get_release_platforms(release) + ["all"]:
+            path = f"{d}/ap-loader-{platform}.jar"
+            shutil.copy(f"{releases_dir}/ap-loader-{release}-{platform}.jar", path)
+            platform_paths.append(path)
+
+        flags_str = f"-F {changelog_file} -t '{title}' {'--latest' if is_latest else ''}" \
+              f" {'--prerelease' if prerelease else ''}"
+        paths_str = " ".join(f'"{p}"' for p in platform_paths)
+        cmd = f"gh release create {release} {flags_str} {paths_str}"
+        try:
+            subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError:
+            # this is either a real problem or it means that the release already exists
+            # in the latter case, we can just update it
+            cmd = f"gh release edit {release} {flags_str}; gh release upload {release} {paths_str} --clobber"
+            try:
+                subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except subprocess.CalledProcessError:
+                os.system(
+                    f"cd {CURRENT_DIR}; {cmd}")
+
+
+
+def deploy(release: str, snapshot: bool = True):
+    deploy_maven(release, snapshot)
+    deploy_github(release)
+
+
 def clear():
     shutil.rmtree(f"{CURRENT_DIR}/ap-releases", ignore_errors=True)
     shutil.rmtree(f"{CURRENT_DIR}/releases", ignore_errors=True)
@@ -291,8 +364,8 @@ def clear():
 
 
 def parse_cli_args() -> Tuple[List[str], Optional[str]]:
-    available_commands = ["current_version", "versions", "download", "build", "test", "deploy",
-                          "deploy-release", "clear"]
+    available_commands = ["current_version", "versions", "download", "build", "test", "deploy_mvn", "deploy_gh", "deploy",
+                          "deploy_release", "clear"]
     commands = []
     release = sys.argv[-1] if sys.argv[-1][0].isnumeric() else None
     for arg in sys.argv[1:(-1 if release else None)]:
@@ -316,6 +389,10 @@ def cli():
         "download": lambda: download_release(release),
         "build": lambda: build_release(release),
         "test": lambda: test_release(release),
+        "deploy_mvn": lambda: deploy_maven(release),
+        "deploy_gh": lambda: deploy_github(release),
+        "deploy": lambda: deploy(release, snapshot=True),
+        "deploy_release": lambda: deploy(release, snapshot=False),
         "clear": clear,
     }
     for command in commands:
