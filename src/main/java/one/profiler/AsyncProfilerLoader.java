@@ -34,7 +34,9 @@ import java.util.stream.Stream;
  *
  * <p>Upon extraction the libraries and tools are stored in an application, version and user
  * specific application folder. The resulting files are therefore cached between executions of the
- * JVM.
+ * JVM. This folder can be manually specified by either setting the property
+ * ap_loader_extraction_dir or by using the {@link
+ * AsyncProfilerLoader#setExtractionDirectory(Path)}} method.
  *
  * <p>Running this class as an agent main class, makes it an agent that behaves the same as the
  * libasyncProfiler.so agent. Running the main method exposed the profiler.sh, jattach and converter
@@ -42,6 +44,7 @@ import java.util.stream.Stream;
  */
 public final class AsyncProfilerLoader {
 
+  private static final String EXTRACTION_PROPERTY_NAME = "ap_loader_extraction_dir";
   private static String librarySuffix;
   private static Path extractedAsyncProfiler;
   private static Path extractedConverter;
@@ -50,6 +53,22 @@ public final class AsyncProfilerLoader {
   private static Path extractionDir;
   private static List<String> availableVersions;
   private static String version;
+
+  static {
+    String dir = System.getProperty(EXTRACTION_PROPERTY_NAME, "");
+    if (!dir.isEmpty()) {
+      Path path = Paths.get(dir);
+      if (Files.exists(path)) {
+        if (!Files.isDirectory(path)) {
+          throw new IllegalArgumentException("The extraction directory is not a directory: " + dir);
+        }
+        if (!Files.isWritable(path)) {
+          throw new IllegalArgumentException("The extraction directory is not writable: " + dir);
+        }
+      }
+      extractionDir = path;
+    }
+  }
 
   private static String getCurrentJARFileName() {
     // source https://stackoverflow.com/a/320595/19040822
@@ -389,8 +408,8 @@ public final class AsyncProfilerLoader {
    *
    * <p>It runs the same as jattach with the only exception that every string that ends with
    * "libasyncProfiler.so" is mapped to the extracted async-profiler library for the load command.
-   * One can therefore start/stop the async-profiler via
-   * <code>executeJattach(PID, "load", "libasyncProfiler.so", true, "start"/"stop")</code>.
+   * One can therefore start/stop the async-profiler via <code>
+   * executeJattach(PID, "load", "libasyncProfiler.so", true, "start"/"stop")</code>.
    *
    * @throws IOException if something went wrong (e.g. the jattach binary is not found or the
    *     execution fails)
@@ -543,7 +562,7 @@ public final class AsyncProfilerLoader {
   public static AsyncProfiler loadOrNull() {
     try {
       return load();
-    } catch (IOException | IllegalStateException | UnsatisfiedLinkError e) {
+    } catch (IOException | IllegalStateException e) {
       return null;
     }
   }
@@ -552,12 +571,25 @@ public final class AsyncProfilerLoader {
    * Loads the included async-profiler for the current OS, architecture and glibc
    *
    * @return the loaded async-profiler
-   * @throws UnsatisfiedLinkError if the library could not be loaded
    * @throws IOException if the library could not be loaded
    * @throws IllegalStateException if OS or arch are not supported
    */
   public static AsyncProfiler load() throws IOException {
-    return AsyncProfiler.getInstance(getAsyncProfilerPath().toString());
+    synchronized (AsyncProfiler.class) {
+      try {
+        return AsyncProfiler.getInstance(getAsyncProfilerPath().toString());
+      } catch (UnsatisfiedLinkError e) {
+        throw new IllegalStateException(
+            "Could not load async-profiler from the extraction directory "
+                + getExtractionDirectory()
+                + ". "
+                + "Please make sure that the extraction directory allows execution. "
+                + "You can specify an alternative using the system property "
+                + EXTRACTION_PROPERTY_NAME
+                + ".",
+            e);
+      }
+    }
   }
 
   public static void premain(String agentArgs, Instrumentation instrumentation) {

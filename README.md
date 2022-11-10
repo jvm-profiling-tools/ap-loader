@@ -248,9 +248,6 @@ Commands:
     deploy            deploy the wrappers for the given release, i.e., use "mvn deploy"
     clear             clear the ap-releases and target folders for a fresh start
 
-Environment variables:
-    JAVA_VERSIONS  comma-separated list of Java versions to test with
-                   (in the form of sdkman! version names, e.g. 17.0.1-sapmchn)
 ```
 
 License
