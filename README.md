@@ -212,9 +212,9 @@ It requires a platform supported by async-profiler and Python 3.6+.
 ### Build the JARs using maven
 
 ```sh
-# download and unzip the platform releases that you want to include
-wget https://github.com/jvm-profiling-tools/async-profiler/releases/download/v2.8.3/async-profiler-2.8.3-macos.zip
-unzip -o async-profiler-2.8.3-macos.zip -d ap-releases
+# download the release sources and binaries
+python3 ./bin/releaser.py download 2.8.3
+
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
@@ -249,6 +249,11 @@ Commands:
     clear             clear the ap-releases and target folders for a fresh start
 
 ```
+
+Changelog
+---------
+
+- 10.11.2022: Improve Converter
 
 License
 -------
