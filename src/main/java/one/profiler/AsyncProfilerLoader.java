@@ -409,6 +409,8 @@ public final class AsyncProfilerLoader {
     List<String> profilerArgs = new ArrayList<>(Arrays.asList(args));
     if (profilerArgs.size() > 0 && profilerArgs.get(0).startsWith("jfr")) {
       profilerArgs.set(0, "one.converter." + profilerArgs.get(0));
+    } else {
+      profilerArgs.add("one.converter.Main");
     }
     argList.addAll(profilerArgs);
     return argList.toArray(new String[0]);

@@ -87,5 +87,7 @@ for f in AP_CONVERTER_SOURCE_DIR.glob("*.java"):
         if f.name == "Main.java":
             assert "java -cp converter.jar" in content
             content = content.replace("java -cp converter.jar ", "java -cp ap-loader.jar one.converter.")
+        elif "Usage: java " in content:
+            content = content.replace("Usage: java ", "Usage: java -cp ap-loader.jar ")
         with open(target_file, "w") as target:
             target.write(content)
