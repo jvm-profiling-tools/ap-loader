@@ -69,7 +69,7 @@ Commands:
   agentpath    prints the path of the extracted async-profiler agent
   jattachpath  prints the path of the extracted jattach binary
   supported    fails if this JAR does not include a profiler for the current OS and architecture
-  converter    run the included converter JAR
+  converter    run the included converter
   version      version of the included async-profiler
   clear        clear the directory used for storing extracted files
 ```
@@ -113,7 +113,7 @@ your current OS and architecture.
 
 ### converter
 
-`java -jar ap-loader.jar converter` is equivalent to calling the included `jconverter.jar`:
+`java -jar ap-loader.jar converter` is equivalent to calling the included converters:
 
 ```sh
 java -jar ap-loader.jar converter <Converter> [options] <input> <output>
@@ -123,7 +123,7 @@ java -jar ap-loader.jar converter jfr2flame <input.jfr> <output.html>
 ```
 
 The available converters depend on the included async-profiler version.
-Call `java -jar converter` to a list of available converters, see
+Call `java -jar ap-loader.jar converter` to a list of available converters, see
 [the source code on GitHub](https://github.com/jvm-profiling-tools/async-profiler/blob/master/src/converter/Main.java)
 for more details.
 
@@ -162,6 +162,8 @@ the [main API class](https://github.com/jvm-profiling-tools/async-profiler/blob/
 from the async-profiler.jar.
 
 The API of the `AsyncProfilerLoader` can be used to execute all commands of the CLI programmatically.
+
+The converters reside in the `one.converter` package.
 
 ### Snapshots
 
@@ -212,9 +214,9 @@ It requires a platform supported by async-profiler and Python 3.6+.
 ### Build the JARs using maven
 
 ```sh
-# download and unzip the platform releases that you want to include
-wget https://github.com/jvm-profiling-tools/async-profiler/releases/download/v2.8.3/async-profiler-2.8.3-macos.zip
-unzip -o async-profiler-2.8.3-macos.zip -d ap-releases
+# download the release sources and binaries
+python3 ./bin/releaser.py download 2.8.3
+
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
@@ -249,6 +251,11 @@ Commands:
     clear             clear the ap-releases and target folders for a fresh start
 
 ```
+
+Changelog
+---------
+
+- 11.11.2022: Improve Converter
 
 License
 -------

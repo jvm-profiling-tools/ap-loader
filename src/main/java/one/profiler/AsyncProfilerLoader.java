@@ -47,7 +47,6 @@ public final class AsyncProfilerLoader {
   private static final String EXTRACTION_PROPERTY_NAME = "ap_loader_extraction_dir";
   private static String librarySuffix;
   private static Path extractedAsyncProfiler;
-  private static Path extractedConverter;
   private static Path extractedJattach;
   private static Path extractedProfiler;
   private static Path extractionDir;
@@ -110,7 +109,6 @@ public final class AsyncProfilerLoader {
       }
     }
     extractedAsyncProfiler = null;
-    extractedConverter = null;
     extractedJattach = null;
     extractedProfiler = null;
     extractionDir = null;
@@ -229,10 +227,6 @@ public final class AsyncProfilerLoader {
     return "libasyncProfiler-" + getLibrarySuffix();
   }
 
-  private static String getConverterFileName() {
-    return "converter-" + getVersion() + ".jar";
-  }
-
   private static String getJattachFileName() {
     return "jattach-" + getLibrarySuffix().replace(".so", "");
   }
@@ -295,22 +289,6 @@ public final class AsyncProfilerLoader {
     } catch (IOException e) {
       throw new IOException("Could not copy file " + fileName + " to " + destination, e);
     }
-  }
-
-  /**
-   * Extracts the converter JAR
-   *
-   * @return path to the extracted converter JAR
-   * @throws IllegalStateException if OS or arch are not supported
-   * @throws IOException if the extraction fails
-   */
-  public static Path getConverterPath() throws IOException {
-    if (extractedConverter == null) {
-      extractedConverter =
-          copyFromResources(
-              getConverterFileName(), getExtractionDirectory().resolve("converter.jar"));
-    }
-    return extractedConverter;
   }
 
   /**
@@ -426,9 +404,15 @@ public final class AsyncProfilerLoader {
   private static String[] processConverterArgs(String[] args) throws IOException {
     List<String> argList = new ArrayList<>();
     argList.add(System.getProperty("java.home") + "/bin/java");
-    argList.add("-jar");
-    argList.add(getConverterPath().toString());
-    argList.addAll(Arrays.asList(args));
+    argList.add("-cp");
+    argList.add(System.getProperty("java.class.path"));
+    List<String> profilerArgs = new ArrayList<>(Arrays.asList(args));
+    if (profilerArgs.size() > 0 && profilerArgs.get(0).startsWith("jfr")) {
+      profilerArgs.set(0, "one.converter." + profilerArgs.get(0));
+    } else {
+      profilerArgs.add("one.converter.Main");
+    }
+    argList.addAll(profilerArgs);
     return argList.toArray(new String[0]);
   }
 
@@ -647,7 +631,7 @@ public final class AsyncProfilerLoader {
     }
     out.println("  supported    fails if this JAR does not include a profiler");
     out.println("               for the current OS and architecture");
-    out.println("  converter    run the included converter JAR");
+    out.println("  converter    run the included converter");
     out.println("  version      version of the included async-profiler");
     out.println("  clear        clear the directory used for storing extracted files");
   }

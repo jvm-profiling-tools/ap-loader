@@ -21,12 +21,10 @@ cp "$AP_RELEASE/build/jattach" \
 python3 "$OWN_DIR/timestamp.py" > "target/classes/libs/ap-timestamp-$version"
 echo "$version" > target/classes/libs/ap-version
 
-echo "Copy $AP_RELEASE/build/converter.jar"
-cp "$AP_RELEASE/build/converter.jar" "target/classes/libs/converter-$version.jar"
 echo "Copy $AP_RELEASE/profiler.sh"
 cp "$AP_RELEASE/profiler.sh" "target/classes/libs/profiler-$version.sh"
 python3 "$OWN_DIR/profile_processor.py" "target/classes/libs/profiler-$version.sh"
-echo "Extracting $AP_RELEASE/build/async-profiler.jar"
-unzip -o "ap-releases/async-profiler-$VERSION_PLATFORM/build/async-profiler.jar" \
-  "*.class" -d "target/classes"
-cp ap-releases/async-profiler-$version-code/src/api/one/profiler/*.java src/main/java/one/profiler
+
+echo "Copy Java sources"
+python3 "$OWN_DIR/copy_java_sources.py" "$BASEDIR" "$VERSION_PLATFORM"
+
