@@ -73,7 +73,8 @@ def get_release(release: str) -> Dict[str, Any]:
 
 
 def get_release_versions() -> List[str]:
-    return [release["tag_name"][1:] for release in get_releases() if not release["tag_name"][1:].startswith("1.")]
+    return [release["tag_name"][1:] for release in get_releases() if not release["tag_name"][1:].startswith("1.")
+            and release["tag_name"][-1].isdigit()]
 
 
 def get_most_recent_release() -> str:

@@ -139,12 +139,10 @@ public final class AsyncProfilerLoader {
         if (arch.equals("arm64") || arch.equals("aarch64")) {
           librarySuffix = version + "-linux-aarch64.so";
         } else if (arch.equals("x86_64") || arch.equals("x64") || arch.equals("amd64")) {
-          if (isOnGLibc()) {
-            librarySuffix = version + "-linux-x64.so";
-          } else if (isOnMusl()) {
+          if (isOnMusl()) {
             librarySuffix = version + "-linux-x64-musl.so";
           } else {
-            throw new IllegalStateException("Async-profiler does not work with the given libc");
+            librarySuffix = version + "-linux-x64.so";
           }
         } else {
           throw new IllegalStateException("Async-profiler does not work on Linux " + arch);
@@ -199,17 +197,6 @@ public final class AsyncProfilerLoader {
       version = getAvailableVersions().get(0);
     }
     return version;
-  }
-
-  private static boolean isOnGLibc() {
-    // see https://unix.stackexchange.com/questions/120380/what-c-library-version-does-my-system-use
-    try {
-      Process process = Runtime.getRuntime().exec(new String[] {"getconf", "GNU_LIBC_VERSION"});
-      BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-      return reader.readLine() != null;
-    } catch (IOException e) {
-      return false;
-    }
   }
 
   private static boolean isOnMusl() {
