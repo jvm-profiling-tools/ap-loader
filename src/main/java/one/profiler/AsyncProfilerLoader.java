@@ -430,6 +430,7 @@ public final class AsyncProfilerLoader {
 
   private static String[] processProfilerArgs(String[] args) throws IOException {
     List<String> argList = new ArrayList<>();
+    argList.add("sh");
     argList.add(getProfilerPath().toString());
     argList.addAll(Arrays.asList(args));
     return argList.toArray(new String[0]);
