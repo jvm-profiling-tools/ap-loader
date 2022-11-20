@@ -7,7 +7,7 @@
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader</artifactId>
     <version>${project.versionPlatform}${project.suffix}</version>
-    <url>https://github.com/parttimenerd/ap-loader</url>
+    <url>https://github.com/jvm-profiling-tools/ap-loader</url>
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>
@@ -22,9 +22,9 @@
         </developer>
     </developers>
     <scm>
-        <connection>scm:git:https://github.com/parttimenerd/ap-loader.git</connection>
-        <developerConnection>scm:git:https://github.com/parttimenerd/ap-loader.git</developerConnection>
-        <url>https://github.com/parttimenerd/ap-loader.git</url>
+        <connection>scm:git:https://github.com/jvm-profiling-tools/ap-loader.git</connection>
+        <developerConnection>scm:git:https://github.com/jvm-profiling-tools/ap-loader.git</developerConnection>
+        <url>https://github.com/jvm-profiling-tools/ap-loader.git</url>
     </scm>
     <inceptionYear>2022</inceptionYear>
     <description>Packages async-profiler, including the converter and jattach, in a single JAR.</description>

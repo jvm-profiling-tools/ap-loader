@@ -10,7 +10,7 @@ into other Java-based tools.
 
 The wrapper is tested against all relevant tests of the async-profiler tool, ensuring that it has the same behavior.
 
-Take the [`all` build](https://github.com/parttimenerd/ap-loader/releases/latest/download/ap-loader-all.jar) and you have a JAR that provides the important features of async-profiler on all supported
+Take the [`all` build](https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar) and you have a JAR that provides the important features of async-profiler on all supported
 platforms.
 
 A changelog can be found in the async-profiler repository, as this library should rarely change itself.
@@ -24,9 +24,9 @@ Download
 --------
 
 You can download the latest release from the 
-[latest release page](https://github.com/parttimenerd/ap-loader/releases/latest/).
+[latest release page](https://github.com/jvm-profiling-tools/ap-loader/releases/latest/).
 As a shortcut, the wrapper for all platforms can be found 
-[here](https://github.com/parttimenerd/ap-loader/releases/latest/download/ap-loader-all.jar).
+[here](https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar).
 
 It should be up to date with the latest async-profiler release, but if not, feel free to create an issue.
 
