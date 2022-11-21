@@ -14,23 +14,28 @@ RELEASE = sys.argv[2]
 VERSION = RELEASE.split("-")[0]
 AP_SOURCE_DIR = BASEDIR / "ap-releases" / f"async-profiler-{VERSION}-code" / "src"
 AP_CONVERTER_SOURCE_DIR = AP_SOURCE_DIR / "converter"
+AP_RESOURCES_SOURCE_DIR = AP_SOURCE_DIR / "res"
 AP_API_SOURCE_DIR = AP_SOURCE_DIR / "api" / "one" / "profiler"
 TARGET_SOURCE_DIR = BASEDIR / "src" / "main" / "java"
 TARGET_ONE_DIR = TARGET_SOURCE_DIR / "one"
 TARGET_ONE_PROFILER_DIR = TARGET_ONE_DIR / "profiler"
 TARGET_CONVERTER_DIR = TARGET_ONE_DIR / "converter"
+TARGET_RESOURCES_DIR = BASEDIR / "src" / "main" / "resources"
 
 assert AP_SOURCE_DIR.exists(), f"Source directory {AP_SOURCE_DIR} does not exist"
 assert AP_CONVERTER_SOURCE_DIR.exists(), f"Source directory {AP_CONVERTER_SOURCE_DIR} does not exist"
 assert AP_API_SOURCE_DIR.exists()
 assert TARGET_SOURCE_DIR.exists()
 assert TARGET_ONE_PROFILER_DIR.exists()
+assert AP_RESOURCES_SOURCE_DIR.exists()
 
 PROJECT_FILES = ["AsyncProfilerLoader.java"]
 
 DRY_RUN = False
 
 os.chdir(BASEDIR)
+
+os.makedirs(TARGET_RESOURCES_DIR, exist_ok=True)
 
 print("Remove old files")
 for f in TARGET_ONE_PROFILER_DIR.glob("*"):
@@ -42,6 +47,7 @@ for f in TARGET_ONE_PROFILER_DIR.glob("*"):
                 f.rmdir()
             else:
                 f.unlink()
+
 for f in TARGET_ONE_DIR.glob("*"):
     if not f.is_dir() or f.name == "profiler":
         continue
@@ -49,6 +55,7 @@ for f in TARGET_ONE_DIR.glob("*"):
         print("would remove " + str(f))
     else:
         shutil.rmtree(f)
+
 for f in TARGET_SOURCE_DIR.glob("*.java"):
     if DRY_RUN:
         print("would remove " + str(f))
@@ -64,6 +71,13 @@ for f in AP_API_SOURCE_DIR.glob("*.java"):
     else:
         shutil.copy(f, target_file)
 
+print("Copy converter resource files")
+for f in AP_RESOURCES_SOURCE_DIR.glob("*"):
+    target_file = TARGET_RESOURCES_DIR / f.name
+    if DRY_RUN:
+        print(f"would copy {f} to {target_file}")
+    else:
+        shutil.copy(f, target_file)
 
 print("Copy converter directories")
 for directory in AP_CONVERTER_SOURCE_DIR.glob("one/*"):

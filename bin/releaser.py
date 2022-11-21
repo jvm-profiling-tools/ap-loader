@@ -196,13 +196,20 @@ def test_release_basic_execution(release: str, platform: str, ignore_output=True
         if not agentpath.endswith(".so") or not os.path.exists(agentpath):
             print(f"Invalid agentpath: {agentpath}")
             return False
-        profile_file = f"{TESTS_DIR}/profile.html"
-        cmd = f"java -javaagent:{release_file}=start,file={profile_file} " \
+        profile_file = f"{TESTS_DIR}/profile.jfr"
+        cmd = f"java -javaagent:{release_file}=start,file={profile_file},jfr " \
               f"-cp {TESTS_CODE_DIR}/test ThreadsTarget"
         if not ignore_output:
             print(f"Execute {cmd}")
         subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=pipe, stderr=pipe)
         if not os.path.exists(profile_file):
+            return False
+        flamegraph_file = f"{TESTS_DIR}/flamegraph.html"
+        cmd = f"java -jar '{release_file}' converter jfr2flame {profile_file} {flamegraph_file}"
+        if not ignore_output:
+            print(f"Execute {cmd}")
+        subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=pipe, stderr=pipe)
+        if not os.path.exists(flamegraph_file):
             return False
         return True
     except subprocess.CalledProcessError:
