@@ -177,13 +177,13 @@ We currently only release to snapshot, as the API is not stable yet.
 </dependency>
 ```
 
-For example for the `all` variant of version 2.8.3:
+For example for the `all` variant of version 2.9:
 
 ```xml
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader</artifactId>
-    <version>2.8.3-all-SNAPSHOT</version>
+    <version>2.9-all-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -215,16 +215,16 @@ It requires a platform supported by async-profiler and Python 3.6+.
 
 ```sh
 # download the release sources and binaries
-python3 ./bin/releaser.py download 2.8.3
+python3 ./bin/releaser.py download 2.9
 
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.versionPlatform=2.8.3-macos package assembly:single
+mvn -Dproject.versionPlatform=2.9-macos package assembly:single
 # use it
-java -jar target/ap-loader-2.8.3-macos-full.jar ...
+java -jar target/ap-loader-2.9-macos-full.jar ...
 # build the all JAR
-mvn -Dproject.versionPlatform=2.8.3-all -f pom_all.xml package assembly:single
+mvn -Dproject.versionPlatform=2.9-all -f pom_all.xml package assembly:single
 ```
 
 Development
