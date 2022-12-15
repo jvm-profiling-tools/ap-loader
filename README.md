@@ -165,6 +165,16 @@ The API of the `AsyncProfilerLoader` can be used to execute all commands of the 
 
 The converters reside in the `one.converter` package.
 
+### Releases
+
+```xml
+<dependency>
+  <groupId>me.bechberger</groupId>
+  <artifactId>ap-loader</artifactId>
+  <version>version-variant</version>
+</dependency>
+```
+
 ### Snapshots
 
 We currently only release to snapshot, as the API is not stable yet.
@@ -242,14 +252,16 @@ Usage:
     python3 ./bin/releaser.py <command> ... <command> [release or current if not present]
 
 Commands:
-    current_version   print the youngest released version of async-profiler
+ current_version   print the youngest released version of async-profiler
     versions          print all released versions of async-profiler (supported by this project)
     download          download and prepare the folders for the given release
     build             build the wrappers for the given release
     test              test the given release
-    deploy            deploy the wrappers for the given release, i.e., use "mvn deploy"
+    deploy_mvn        deploy the wrappers for the given release as a snapshot to maven
+    deploy_gh         deploy the wrappers for the given release as a snapshot to GitHub
+    deploy            deploy the wrappers for the given release as a snapshot
+    deploy_release    deploy the wrappers for the given release
     clear             clear the ap-releases and target folders for a fresh start
-
 ```
 
 Changelog
