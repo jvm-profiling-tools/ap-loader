@@ -6,7 +6,7 @@
     <name>ap-loader</name>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader</artifactId>
-    <version>${project.versionPlatform}${project.suffix}</version>
+    <version>${project.vversion}-${project.subversion}-${project.platform}${project.suffix}</version>
     <url>https://github.com/jvm-profiling-tools/ap-loader</url>
     <licenses>
         <license>
@@ -33,7 +33,9 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.versionPlatform>2.8.3-macos</project.versionPlatform>
+        <project.vversion>2.8.3</project.vversion>
+        <project.subversion>1</project.subversion>
+        <project.platform>macos</project.platform>
         <project.suffix>-SNAPSHOT</project.suffix>
     </properties>
 
@@ -77,7 +79,7 @@
                     <arguments>
                         <argument>${basedir}/bin/copy_libs.sh</argument>
                         <argument>${basedir}</argument>
-                        <argument>${project.versionPlatform}</argument>
+                        <argument>${project.vversion}-${project.platform}</argument>
                     </arguments>
                     <environmentVariables>
                         <LANG>en_US</LANG>
@@ -109,19 +111,24 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                            <addDefaultImplementationEntries>false</addDefaultImplementationEntries>
+                            <addDefaultSpecificationEntries>false</addDefaultSpecificationEntries>
                             <mainClass>one.profiler.AsyncProfilerLoader</mainClass>
                         </manifest>
                         <manifestEntries>
                             <Agent-Class>one.profiler.AsyncProfilerLoader</Agent-Class>
                             <Premain-Class>one.profiler.AsyncProfilerLoader</Premain-Class>
+                            <Specification-Title>ap-loader</Specification-Title>
+                            <Specification-Version>${project.version}</Specification-Version>
+                            <Implementation-Title>ap-loader</Implementation-Title>
+                            <Implementation-Version>${project.version}</Implementation-Version>
+                            <Implementation-Vendor-Id>me.bechberger</Implementation-Vendor-Id>
                         </manifestEntries>
                     </archive>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
-                    <finalName>${project.artifactId}-${project.versionPlatform}-full</finalName>
+                    <finalName>${project.artifactId}-${project.vversion}-${project.subversion}-${project.platform}-full</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
             </plugin>

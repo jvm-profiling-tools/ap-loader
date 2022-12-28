@@ -28,11 +28,23 @@ You can download the latest release from the
 As a shortcut, the wrapper for all platforms can be found 
 [here](https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar).
 
-It should be up to date with the latest async-profiler release, but if not, feel free to create an issue.
+It should be up-to-date with the latest async-profiler release, but if not, feel free to create an issue.
 
-To use the library as a dependency, you can depend on `me.bechberger.ap-loader:<version>-<variant>-SNAPSHOT`
+To use the library as a dependency, you can depend on `me.bechberger.ap-loader:<version>-<ap-loader-version>-<variant>-SNAPSHOT`
 from the [Sonatype OSS repository](https://s01.oss.sonatype.org/content/repositories/snapshots). 
-See [#usage-in-java-code](Usage in Java Code) for more information. 
+See [#usage-in-java-code](Usage in Java Code) for more information. The current ap-loader version is `1`.
+
+Or you can depend on the artifacts from maven central, they should be slightly more stable:
+
+```xml
+<dependency>
+    <groupId>me.bechberger</groupId>
+    <artifactId>ap-loader</artifactId>
+    <version>2.9-1-all</version>
+</dependency>
+```
+
+Others are of course available, see [maven central](https://search.maven.org/artifact/me.bechberger/ap-loader).
 
 Supported Platforms
 -------------------

@@ -8,6 +8,7 @@ It has no dependencies, only requiring Python 3.6+ to be installed.
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,9 @@ import tempfile
 import time
 from typing import Any, Dict, List, Union, Tuple, Optional
 from urllib import request
+
+SUB_VERSION = 1
+RELEASE_NOTES = """- Fixed the library version in the pom #3 (thanks to @gavlyukovskiy for spotting this)"""
 
 HELP = """
 Usage:
@@ -39,6 +43,28 @@ CACHE_DIR = f"{CURRENT_DIR}/.cache"
 TESTS_DIR = f"{CURRENT_DIR}/.tests"
 TESTS_CODE_DIR = f"{TESTS_DIR}_code"
 CACHE_TIME = 60 * 60 * 24  # one day
+
+
+def prepare_poms(release: str, platform: str, snapshot: bool = True) -> Tuple[str, str]:
+    """ Prepare the POMs for the given release and platform """
+    folder = f"{CACHE_DIR}/pom-{release}-{platform}"
+    os.makedirs(folder, exist_ok=True)
+    for pom in ["pom.xml", "pom_all.xml"]:
+        pom_file = f"{CURRENT_DIR}/{pom}"
+        dest_pom = f"{folder}/{pom}"
+        with open(pom_file) as f:
+            pom_content = f.read()
+            suffix = "-SNAPSHOT" if snapshot else ""
+            pom_content = re.sub(r"<version>.*</version>", f"<version>{release}-{SUB_VERSION}-{platform}{suffix}</version>", pom_content, count = 1)
+            pom_content = re.sub(r"<project.vversion>.*</project.vversion>", f"<project.vversion>{release}</project.vversion>", pom_content, count = 1)
+            pom_content = re.sub(r"<project.subversion>.*</project.subversion>", f"<project.subversion>{SUB_VERSION}</project.subversion>", pom_content, count = 1)
+            pom_content = re.sub(r"<project.platform>.*</project.platform>", f"<project.platform>{platform}</project.platform>", pom_content, count = 1)
+            pom_content = re.sub(r"<project.suffix>.*</project.suffix>", f"<project.suffix>{suffix}</project.suffix>", pom_content, count = 1)
+            pom_content = pom_content.replace("${basedir}", "${basedir}/../..")
+            with open(dest_pom, "w") as f2:
+                f2.write(pom_content)
+    return f"{folder}/pom.xml", f"{folder}/pom_all.xml"
+
 
 
 def execute(args: Union[List[str], str]):
@@ -134,7 +160,7 @@ def download_release(release: str):
 
 
 def release_target_file(release: str, platform: str):
-    return f"{CURRENT_DIR}/releases/ap-loader-{release}-{platform}.jar"
+    return f"{CURRENT_DIR}/releases/ap-loader-{release}-{SUB_VERSION}-{platform}.jar"
 
 
 def build_release(release: str):
@@ -143,15 +169,15 @@ def build_release(release: str):
     os.makedirs(release_folder, exist_ok=True)
     download_release(release)
     for platform in get_release_platforms(release):
-        release_file = f"ap-loader-{release}-{platform}-full.jar"
-        dest_release_file = f"{release_folder}/ap-loader-{release}-{platform}.jar"
+        release_file = f"ap-loader-{release}-{SUB_VERSION}-{platform}-full.jar"
+        dest_release_file = f"{release_folder}/ap-loader-{release}-{SUB_VERSION}-{platform}.jar"
         print(f"Build release for {platform}")
-        execute(f"mvn -Dproject.versionPlatform={release}-{platform} package assembly:single")
+        execute(f"mvn -Dproject.vversion={release} -Dproject.subrelease={SUB_VERSION} -Dproject.platform={platform} package assembly:single")
         shutil.copy(f"{CURRENT_DIR}/target/{release_file}", dest_release_file)
     all_target = release_target_file(release, "all")
     print("Build release for all")
-    execute(f"mvn -Dproject.versionPlatform={release}-all package assembly:single -f pom_all.xml")
-    shutil.copy(f"{CURRENT_DIR}/target/ap-loader-{release}-all-full.jar", all_target)
+    execute(f"mvn -Dproject.vversion={release} -Dproject.subrelease={SUB_VERSION} -Dproject.platform=all package assembly:single -f pom_all.xml")
+    shutil.copy(f"{CURRENT_DIR}/target/ap-loader-{release}-{SUB_VERSION}-all-full.jar", all_target)
 
 
 def build_tests(release: str):
@@ -266,9 +292,10 @@ def test_release(release: str):
 
 
 def deploy_maven_platform(release: str, platform: str, snapshot: bool):
-    print(f"Deploy {release} for {platform} to maven")
-    pom = "pom_all.xml" if platform == "all" else "pom.xml"
-    cmd = f"mvn -Dproject.versionPlatform='{release}-{platform}' " \
+    print(f"Deploy {release}-{SUB_VERSION} for {platform} to maven")
+    poms = prepare_poms(release, platform, snapshot)
+    pom = poms[1] if platform == "all" else poms[0]
+    cmd = f"mvn -Dproject.vversion={release} -Dproject.subrelease={SUB_VERSION} -Dproject.platform={platform} " \
           f"-Dproject.suffix='{'-SNAPSHOT' if snapshot else ''}' -f {pom} clean deploy"
     try:
         subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=subprocess.DEVNULL,
@@ -280,7 +307,7 @@ def deploy_maven_platform(release: str, platform: str, snapshot: bool):
 
 
 def deploy_maven(release: str, snapshot: bool = True):
-    print(f"Deploy {release}{' snapshot' if snapshot else ''}")
+    print(f"Deploy {release}-{SUB_VERSION}{' snapshot' if snapshot else ''}")
     for platform in get_release_platforms(release):
         deploy_maven_platform(release, platform, snapshot)
     deploy_maven_platform(release, "all", snapshot)
@@ -288,7 +315,8 @@ def deploy_maven(release: str, snapshot: bool = True):
 
 def get_changelog(release: str) -> str:
     url = get_release(release)["html_url"]
-    return f"_Copied from the wrapped [async-profiler release]({url}) " \
+    return f"## ap-loader v{SUB_VERSION}\n\n{RELEASE_NOTES}\n\n" \
+           f"_The following is copied from the wrapped [async-profiler release]({url}) " \
            f"by [Andrei Pangin](https://github.com/apangin). " \
            f"The source code linked below should be ignored._\n\n{get_release_info(release)}"
 
@@ -296,10 +324,10 @@ def get_changelog(release: str) -> str:
 def deploy_github(release: str):
     changelog = get_changelog(release)
     is_latest = release == get_most_recent_release()
-    title = f"Loader for {release}: {get_release(release)['name']}"
+    title = f"Loader for {release} (v{SUB_VERSION}): {get_release(release)['name']}"
     prerelease = get_release(release)["prerelease"]
-    print(f"Deploy {release} ({title}) to GitHub")
-    if not os.path.exists(f"{CURRENT_DIR}/releases/ap-loader-{release}-all.jar"):
+    print(f"Deploy {release}-{SUB_VERSION} ({title}) to GitHub")
+    if not os.path.exists(f"{CURRENT_DIR}/releases/ap-loader-{release}-{SUB_VERSION}-all.jar"):
         build_release(release)
     with tempfile.TemporaryDirectory() as d:
         changelog_file = f"{d}/CHANGELOG.md"
@@ -310,20 +338,20 @@ def deploy_github(release: str):
         platform_paths = []
         for platform in get_release_platforms(release) + ["all"]:
             path = f"{d}/ap-loader-{platform}.jar"
-            shutil.copy(f"{releases_dir}/ap-loader-{release}-{platform}.jar", path)
+            shutil.copy(f"{releases_dir}/ap-loader-{release}-{SUB_VERSION}-{platform}.jar", path)
             platform_paths.append(path)
 
         flags_str = f"-F {changelog_file} -t '{title}' {'--latest' if is_latest else ''}" \
                     f" {'--prerelease' if prerelease else ''}"
         paths_str = " ".join(f'"{p}"' for p in platform_paths)
-        cmd = f"gh release create {release} {flags_str} {paths_str}"
+        cmd = f"gh release create {release}-{SUB_VERSION} {flags_str} {paths_str}"
         try:
             subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=subprocess.DEVNULL,
                                   stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError:
             # this is either a real problem or it means that the release already exists
             # in the latter case, we can just update it
-            cmd = f"gh release edit {release} {flags_str}; gh release upload {release} {paths_str} --clobber"
+            cmd = f"gh release edit {release}-{SUB_VERSION} {flags_str}; gh release upload {release}-{SUB_VERSION} {paths_str} --clobber"
             try:
                 subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=subprocess.DEVNULL,
                                       stderr=subprocess.DEVNULL)
