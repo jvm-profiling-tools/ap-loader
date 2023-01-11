@@ -1,6 +1,8 @@
 Loader for AsyncProfiler
 ========================
 
+![Maven Central](https://img.shields.io/maven-central/v/me.bechberger/ap-loader) ![GitHub](https://img.shields.io/github/license/jvm-profiling-tools/ap-loader)
+
 Packages [async-profiler](https://github.com/jvm-profiling-tools/async-profiler) releases in a JAR
 with an `AsyncProfilerLoader` (version 2+) that loads the suitable native library for the current platform.
 
@@ -281,9 +283,9 @@ Deploy the latest version via ` bin/releaser.py download build test deploy` as a
 For a release use `bin/releaser.py download build test deploy_release`,
 but before make sure to do the following for a new sub release:
 
-- increment the `SUB_VERSION` variable in `bin/releaser.py`
 - update the version number in the README
 - update the changelog in the README and `bin/releaser.py`
+- and increment the `SUB_VERSION` variable in `bin/releaser.py` afterwards
 
 And the following for a new async-profiler release:
 - update the version in the README
