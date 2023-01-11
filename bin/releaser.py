@@ -17,8 +17,8 @@ import time
 from typing import Any, Dict, List, Union, Tuple, Optional
 from urllib import request
 
-SUB_VERSION = 1
-RELEASE_NOTES = """- Fixed the library version in the pom #3 (thanks to @gavlyukovskiy for spotting this)"""
+SUB_VERSION = 2
+RELEASE_NOTES = """- Fixed the library version in the pom #3 again (thanks to @gavlyukovskiy, @dpsoft and @krzysztofslusarski for spotting the bug)"""
 
 HELP = """
 Usage:
@@ -47,24 +47,39 @@ CACHE_TIME = 60 * 60 * 24  # one day
 
 def prepare_poms(release: str, platform: str, snapshot: bool = True) -> Tuple[str, str]:
     """ Prepare the POMs for the given release and platform """
-    folder = f"{CACHE_DIR}/pom-{release}-{platform}"
+    folder = CURRENT_DIR
     os.makedirs(folder, exist_ok=True)
-    for pom in ["pom.xml", "pom_all.xml"]:
-        pom_file = f"{CURRENT_DIR}/{pom}"
-        dest_pom = f"{folder}/{pom}"
+    suffix = f"-{release}-{platform}{'-SNAPSHOT' if snapshot else ''}"
+    for pom in ["pom", "pom_all"]:
+        pom_file = f"{CURRENT_DIR}/{pom}.xml"
+        dest_pom = f"{folder}/{pom}{suffix}.xml"
         with open(pom_file) as f:
             pom_content = f.read()
-            suffix = "-SNAPSHOT" if snapshot else ""
-            pom_content = re.sub(r"<version>.*</version>", f"<version>{release}-{SUB_VERSION}-{platform}{suffix}</version>", pom_content, count = 1)
+            p_suffix = "-SNAPSHOT" if snapshot else ""
+            pom_content = re.sub(r"<version>.*</version>", f"<version>{release}-{SUB_VERSION}-{platform}{p_suffix}</version>", pom_content, count = 1)
             pom_content = re.sub(r"<project.vversion>.*</project.vversion>", f"<project.vversion>{release}</project.vversion>", pom_content, count = 1)
             pom_content = re.sub(r"<project.subversion>.*</project.subversion>", f"<project.subversion>{SUB_VERSION}</project.subversion>", pom_content, count = 1)
             pom_content = re.sub(r"<project.platform>.*</project.platform>", f"<project.platform>{platform}</project.platform>", pom_content, count = 1)
-            pom_content = re.sub(r"<project.suffix>.*</project.suffix>", f"<project.suffix>{suffix}</project.suffix>", pom_content, count = 1)
-            pom_content = pom_content.replace("${basedir}", "${basedir}/../..")
+            pom_content = re.sub(r"<project.suffix>.*</project.suffix>", f"<project.suffix>{p_suffix}</project.suffix>", pom_content, count = 1)
             with open(dest_pom, "w") as f2:
                 f2.write(pom_content)
-    return f"{folder}/pom.xml", f"{folder}/pom_all.xml"
+    return f"{folder}/pom{suffix}.xml", f"{folder}/pom_all{suffix}.xml"
 
+
+class PreparedPOMs:
+
+    def __init__(self, release: str, platform: str, snapshot: bool = True):
+        self.release = release
+        self.platform = platform
+        self.snapshot = snapshot
+
+    def __enter__(self):
+        self.pom, self.pom_all = prepare_poms(self.release, self.platform, self.snapshot)
+        return self
+
+    def __exit__(self, *args):
+        os.remove(self.pom)
+        os.remove(self.pom_all)
 
 
 def execute(args: Union[List[str], str]):
@@ -172,11 +187,11 @@ def build_release(release: str):
         release_file = f"ap-loader-{release}-{SUB_VERSION}-{platform}-full.jar"
         dest_release_file = f"{release_folder}/ap-loader-{release}-{SUB_VERSION}-{platform}.jar"
         print(f"Build release for {platform}")
-        execute(f"mvn -Dproject.vversion={release} -Dproject.subrelease={SUB_VERSION} -Dproject.platform={platform} package assembly:single")
+        execute(f"mvn -Dproject.vversion={release} -Dproject.subversion={SUB_VERSION} -Dproject.platform={platform} package assembly:single")
         shutil.copy(f"{CURRENT_DIR}/target/{release_file}", dest_release_file)
     all_target = release_target_file(release, "all")
     print("Build release for all")
-    execute(f"mvn -Dproject.vversion={release} -Dproject.subrelease={SUB_VERSION} -Dproject.platform=all package assembly:single -f pom_all.xml")
+    execute(f"mvn -Dproject.vversion={release} -Dproject.subversion={SUB_VERSION} -Dproject.platform=all package assembly:single -f pom_all.xml")
     shutil.copy(f"{CURRENT_DIR}/target/ap-loader-{release}-{SUB_VERSION}-all-full.jar", all_target)
 
 
@@ -293,17 +308,18 @@ def test_release(release: str):
 
 def deploy_maven_platform(release: str, platform: str, snapshot: bool):
     print(f"Deploy {release}-{SUB_VERSION} for {platform} to maven")
-    poms = prepare_poms(release, platform, snapshot)
-    pom = poms[1] if platform == "all" else poms[0]
-    cmd = f"mvn -Dproject.vversion={release} -Dproject.subrelease={SUB_VERSION} -Dproject.platform={platform} " \
-          f"-Dproject.suffix='{'-SNAPSHOT' if snapshot else ''}' -f {pom} clean deploy"
-    try:
-        subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL)
-    except subprocess.CalledProcessError:
-        os.system(
-            f"cd {CURRENT_DIR}; {cmd}")
-        raise
+    with PreparedPOMs(release, platform, snapshot) as poms:
+        pom = poms.pom_all if platform == "all" else poms.pom
+        cmd = f"mvn -Dproject.vversion={release} -Dproject.subversion={SUB_VERSION} -Dproject.platform={platform} " \
+              f"-Dproject.suffix='{'-SNAPSHOT' if snapshot else ''}' -f {pom} clean deploy"
+        try:
+            subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=subprocess.DEVNULL,
+                                  stderr=subprocess.DEVNULL)
+            #os.system(f"cd {CURRENT_DIR}; {cmd}")
+        except subprocess.CalledProcessError:
+            os.system(
+                f"cd {CURRENT_DIR}; {cmd}")
+            raise
 
 
 def deploy_maven(release: str, snapshot: bool = True):

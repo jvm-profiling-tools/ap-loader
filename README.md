@@ -40,7 +40,7 @@ Or you can depend on the artifacts from maven central, they should be slightly m
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader</artifactId>
-    <version>2.9-1-all</version>
+    <version>2.9-2-all</version>
 </dependency>
 ```
 
@@ -242,11 +242,11 @@ python3 ./bin/releaser.py download 2.9
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.versionPlatform=2.9-macos package assembly:single
+mvn -Dproject.vversion=2.9-macos -Dproject.subrelease=2 -Dproject.platform=macos package assembly:single
 # use it
-java -jar target/ap-loader-2.9-macos-full.jar ...
+java -jar target/ap-loader-2.9-2-macos-full.jar ...
 # build the all JAR
-mvn -Dproject.versionPlatform=2.9-all -f pom_all.xml package assembly:single
+mvn -Dproject.vversion=2.9 -Dproject.subrelease=2 -Dproject.platform=all package assembly:single
 ```
 
 Development
@@ -276,9 +276,29 @@ Commands:
     clear             clear the ap-releases and target folders for a fresh start
 ```
 
+Deploy the latest version via ` bin/releaser.py download build test deploy` as a snapshot.
+
+For a release use `bin/releaser.py download build test deploy_release`,
+but before make sure to do the following for a new sub release:
+
+- increment the `SUB_VERSION` variable in `bin/releaser.py`
+- update the version number in the README
+- update the changelog in the README and `bin/releaser.py`
+
+And the following for a new async-profiler release:
+- update the version in the README
+
 Changelog
 ---------
 
+### v2
+- Fixed the library version in the pom #3 again
+  (thanks to @gavlyukovskiy, @dpsoft and @krzysztofslusarski for spotting the bug)
+
+### v1
+- Fixed the library version in the pom #3 (thanks to @gavlyukovskiy for spotting the bug)
+
+### v0
 - 11.11.2022: Improve Converter
 
 License
