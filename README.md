@@ -41,8 +41,8 @@ Or you can depend on the artifacts from maven central, they should be slightly m
 ```xml
 <dependency>
     <groupId>me.bechberger</groupId>
-    <artifactId>ap-loader</artifactId>
-    <version>2.9-2-all</version>
+    <artifactId>ap-loader-all</artifactId>
+    <version>2.9-3</version>
 </dependency>
 ```
 
@@ -184,20 +184,28 @@ The converters reside in the `one.converter` package.
 ```xml
 <dependency>
   <groupId>me.bechberger</groupId>
-  <artifactId>ap-loader</artifactId>
-  <version>version-variant</version>
+  <artifactId>ap-loader-variant</artifactId>
+  <version>version</version>
+</dependency>
+```
+
+The latest `all` version can be added via:
+
+```xml
+<dependency>
+  <groupId>me.bechberger</groupId>
+  <artifactId>ap-loader-all</artifactId>
+  <version>2.9-3</version>
 </dependency>
 ```
 
 ### Snapshots
 
-We currently only release to snapshot, as the API is not stable yet.
-
 ```xml
 <dependency>
     <groupId>me.bechberger</groupId>
-    <artifactId>ap-loader</artifactId>
-    <version>version-variant-SNAPSHOT</version>
+    <artifactId>ap-loader-variant</artifactId>
+    <version>version-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -206,8 +214,8 @@ For example for the `all` variant of version 2.9:
 ```xml
 <dependency>
     <groupId>me.bechberger</groupId>
-    <artifactId>ap-loader</artifactId>
-    <version>2.9-all-SNAPSHOT</version>
+    <artifactId>ap-loader-all</artifactId>
+    <version>2.9-3-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -244,11 +252,11 @@ python3 ./bin/releaser.py download 2.9
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.vversion=2.9-macos -Dproject.subrelease=2 -Dproject.platform=macos package assembly:single
+mvn -Dproject.vversion=2.9 -Dproject.subrelease=3 -Dproject.platform=macos package assembly:single
 # use it
-java -jar target/ap-loader-2.9-2-macos-full.jar ...
+java -jar target/ap-loader-macos-2.9-3-full.jar ...
 # build the all JAR
-mvn -Dproject.vversion=2.9 -Dproject.subrelease=2 -Dproject.platform=all package assembly:single
+mvn -Dproject.vversion=2.9 -Dproject.subrelease=3 -Dproject.platform=all package assembly:single
 ```
 
 Development
@@ -292,6 +300,11 @@ And the following for a new async-profiler release:
 
 Changelog
 ---------
+
+### v3
+
+- Create specific artifacts for each platform fixing previous issues with maven version updates (issue #4, thanks @ginkel for reporting it)
+
 
 ### v2
 - Fixed the library version in the pom #3 again

@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
     <name>ap-loader</name>
     <groupId>me.bechberger</groupId>
-    <artifactId>ap-loader</artifactId>
-    <version>${project.vversion}-${project.subversion}-${project.platform}${project.suffix}</version>
+    <artifactId>ap-loader-${project.platform}</artifactId>
+    <version>${project.vversion}-${project.subversion}-${project.suffix}</version>
     <url>https://github.com/jvm-profiling-tools/ap-loader</url>
     <licenses>
         <license>
@@ -116,11 +116,12 @@
                             <mainClass>one.profiler.AsyncProfilerLoader</mainClass>
                         </manifest>
                         <manifestEntries>
+                            <Built-By>Johannes Bechberger</Built-By>
                             <Agent-Class>one.profiler.AsyncProfilerLoader</Agent-Class>
                             <Premain-Class>one.profiler.AsyncProfilerLoader</Premain-Class>
-                            <Specification-Title>ap-loader</Specification-Title>
+                            <Specification-Title>ap-loader-${project.platform}</Specification-Title>
                             <Specification-Version>${project.version}</Specification-Version>
-                            <Implementation-Title>ap-loader</Implementation-Title>
+                            <Implementation-Title>ap-loader-${project.platform}</Implementation-Title>
                             <Implementation-Version>${project.version}</Implementation-Version>
                             <Implementation-Vendor-Id>me.bechberger</Implementation-Vendor-Id>
                         </manifestEntries>
@@ -128,7 +129,7 @@
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
-                    <finalName>${project.artifactId}-${project.vversion}-${project.subversion}-${project.platform}-full</finalName>
+                    <finalName>${project.artifactId}-${project.vversion}-${project.subversion}-full</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
             </plugin>
