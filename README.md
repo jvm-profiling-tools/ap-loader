@@ -1,7 +1,7 @@
 Loader for AsyncProfiler
 ========================
 
-![Maven Central](https://img.shields.io/maven-central/v/me.bechberger/ap-loader) ![GitHub](https://img.shields.io/github/license/jvm-profiling-tools/ap-loader)
+[![Maven Central](https://img.shields.io/maven-central/v/me.bechberger/ap-loader-all)](https://search.maven.org/search?q=ap-loader) [![GitHub](https://img.shields.io/github/license/jvm-profiling-tools/ap-loader)](https://github.com/jvm-profiling-tools/ap-loader/blob/main/LICENSE)
 
 Packages [async-profiler](https://github.com/jvm-profiling-tools/async-profiler) releases in a JAR
 with an `AsyncProfilerLoader` (version 2+) that loads the suitable native library for the current platform.
