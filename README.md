@@ -4,7 +4,7 @@ Loader for AsyncProfiler
 [![Maven Central](https://img.shields.io/maven-central/v/me.bechberger/ap-loader-all)](https://search.maven.org/search?q=ap-loader) [![GitHub](https://img.shields.io/github/license/jvm-profiling-tools/ap-loader)](https://github.com/jvm-profiling-tools/ap-loader/blob/main/LICENSE)
 
 Packages [async-profiler](https://github.com/jvm-profiling-tools/async-profiler) releases in a JAR
-with an `AsyncProfilerLoader` (version 2+) that loads the suitable native library for the current platform.
+with an `AsyncProfilerLoader` (version 2.*) that loads the suitable native library for the current platform.
 
 This is usable as a java agent (same arguments as the async-profiler agent) and as the basis for other libraries.
 The real rationale behind this library is that the async-profiler is a nice tool, but it cannot be easily integrated
@@ -42,7 +42,7 @@ Or you can depend on the artifacts from maven central, they should be slightly m
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader-all</artifactId>
-    <version>2.9-3</version>
+    <version>2.9-4</version>
 </dependency>
 ```
 
@@ -195,7 +195,7 @@ The latest `all` version can be added via:
 <dependency>
   <groupId>me.bechberger</groupId>
   <artifactId>ap-loader-all</artifactId>
-  <version>2.9-3</version>
+  <version>2.9-4</version>
 </dependency>
 ```
 
@@ -215,7 +215,7 @@ For example for the `all` variant of version 2.9:
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader-all</artifactId>
-    <version>2.9-3-SNAPSHOT</version>
+    <version>2.9-4-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -252,11 +252,11 @@ python3 ./bin/releaser.py download 2.9
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.vversion=2.9 -Dproject.subrelease=3 -Dproject.platform=macos package assembly:single
+mvn -Dproject.vversion=2.9 -Dproject.subrelease=4 -Dproject.platform=macos package assembly:single
 # use it
-java -jar target/ap-loader-macos-2.9-3-full.jar ...
+java -jar target/ap-loader-macos-2.9-4-full.jar ...
 # build the all JAR
-mvn -Dproject.vversion=2.9 -Dproject.subrelease=3 -Dproject.platform=all package assembly:single
+mvn -Dproject.vversion=2.9 -Dproject.subrelease=4 -Dproject.platform=all package assembly:single
 ```
 
 Development
@@ -300,6 +300,10 @@ And the following for a new async-profiler release:
 
 Changelog
 ---------
+
+### v4
+
+- `AsyncProfiler.isSupported()` now returns `false` if the OS is not supported by any async-profiler binary, fixes #5
 
 ### v3
 

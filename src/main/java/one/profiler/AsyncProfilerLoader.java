@@ -44,6 +44,12 @@ import java.util.stream.Stream;
  */
 public final class AsyncProfilerLoader {
 
+  private static class OSNotSupportedException extends Exception {
+    OSNotSupportedException(String message) {
+      super(message);
+    }
+  }
+
   private static final String EXTRACTION_PROPERTY_NAME = "ap_loader_extraction_dir";
   private static String librarySuffix;
   private static Path extractedAsyncProfiler;
@@ -130,7 +136,7 @@ public final class AsyncProfilerLoader {
   /**
    * @throws IllegalStateException if OS or Arch not supported
    */
-  private static String getLibrarySuffix() {
+  private static String getLibrarySuffix() throws OSNotSupportedException {
     if (librarySuffix == null) {
       String version = getVersion();
       String os = System.getProperty("os.name").toLowerCase();
@@ -145,12 +151,12 @@ public final class AsyncProfilerLoader {
             librarySuffix = version + "-linux-x64.so";
           }
         } else {
-          throw new IllegalStateException("Async-profiler does not work on Linux " + arch);
+          throw new OSNotSupportedException("Async-profiler does not work on Linux " + arch);
         }
       } else if (os.startsWith("macosx") || os.startsWith("mac os x")) {
         librarySuffix = version + "-macos.so";
       } else {
-        throw new IllegalStateException("Async-profiler does not work on " + os);
+        throw new OSNotSupportedException("Async-profiler does not work on " + os);
       }
     }
     return librarySuffix;
@@ -210,11 +216,11 @@ public final class AsyncProfilerLoader {
     }
   }
 
-  private static String getAsyncProfilerFileName() {
+  private static String getAsyncProfilerFileName() throws OSNotSupportedException {
     return "libasyncProfiler-" + getLibrarySuffix();
   }
 
-  private static String getJattachFileName() {
+  private static String getJattachFileName() throws OSNotSupportedException {
     return "jattach-" + getLibrarySuffix().replace(".so", "");
   }
 
@@ -253,7 +259,11 @@ public final class AsyncProfilerLoader {
    * @return true if a library is available, false otherwise
    */
   public static boolean isSupported() {
-    return hasFileInResources(getAsyncProfilerFileName());
+    try {
+      return hasFileInResources(getAsyncProfilerFileName());
+    } catch (OSNotSupportedException e) {
+      return false;
+    }
   }
 
   /** Copy from resources if needed */
@@ -287,8 +297,12 @@ public final class AsyncProfilerLoader {
    */
   public static Path getJattachPath() throws IOException {
     if (extractedJattach == null) {
-      Path path =
-          copyFromResources(getJattachFileName(), getExtractionDirectory().resolve("jattach"));
+      Path path = null;
+      try {
+        path = copyFromResources(getJattachFileName(), getExtractionDirectory().resolve("jattach"));
+      } catch (OSNotSupportedException e) {
+        throw new IllegalStateException(e.getMessage());
+      }
       if (!path.toFile().setExecutable(true)) {
         throw new IOException("Could not make jattach (" + path + ") executable");
       }
@@ -325,9 +339,13 @@ public final class AsyncProfilerLoader {
    */
   public static Path getAsyncProfilerPath() throws IOException {
     if (extractedAsyncProfiler == null) {
-      extractedAsyncProfiler =
-          copyFromResources(
-              getAsyncProfilerFileName(), getExtractionDirectory().resolve("libasyncProfiler.so"));
+      try {
+        extractedAsyncProfiler =
+            copyFromResources(
+                getAsyncProfilerFileName(), getExtractionDirectory().resolve("libasyncProfiler.so"));
+      } catch (OSNotSupportedException e) {
+        throw new IllegalStateException(e.getMessage());
+      }
     }
     return extractedAsyncProfiler;
   }

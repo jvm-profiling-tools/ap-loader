@@ -17,8 +17,8 @@ import time
 from typing import Any, Dict, List, Union, Tuple, Optional
 from urllib import request
 
-SUB_VERSION = 3
-RELEASE_NOTES = """- Create specific artifacts for each platform fixing previous issues with maven version updates (issue #4, thanks @ginkel for reporting it)"""
+SUB_VERSION = 4
+RELEASE_NOTES = """- `AsyncProfiler.isSupported()` now returns `false` if the OS is not supported by any async-profiler binary, fixes #5"""
 
 HELP = """
 Usage:
