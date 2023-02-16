@@ -1,5 +1,6 @@
 /*
- * Copyright 2022 Johannes Bechberger
+ * Copyright 2023 SAP SE or an SAP affiliate company, Johannes Bechberger
+ * and ap-loader contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

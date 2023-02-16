@@ -320,6 +320,10 @@ Changelog
 ### v0
 - 11.11.2022: Improve Converter
 
-License
--------
-Apache 2.0
+## License
+Apache 2.0, Copyright 2023 SAP SE or an SAP affiliate company, Johannes Bechberger
+and ap-loader contributors
+
+
+*This project is maintained by the [SapMachine](https://sapmachine.io) team
+at [SAP SE](https://sap.com)*
