@@ -1,0 +1,10 @@
+{
+  "catalogs": {},
+  "aliases": {
+    "ap-loader": {
+      "script-ref": "https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar",
+      "description": "async profiler loader. Use directly with `jbang ap-loader@jvm-profiling-tools/ap-loader` or use as agent with `jbang --javaagent=ap-loader@jvm-profile-tools/ap-loader ...`."
+    }
+  },
+  "templates": {}
+}
