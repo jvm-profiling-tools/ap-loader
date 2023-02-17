@@ -175,7 +175,7 @@ java -javaagent:ap-loader.jar=start,event=cpu,file=profile.html <java arguments>
 With JBang you can do:
 
 ```sh
-java -javaagent:ap-loader@jvm-profiling-tools/ap-loader=start,event=cpu,file=profile.html <java arguments>
+jbang --javaagent:ap-loader@jvm-profiling-tools/ap-loader=start,event=cpu,file=profile.html <java arguments>
 ```
 
 See the [GitHub page of async-profiler](https://github.com/jvm-profiling-tools/async-profiler) for more details.
