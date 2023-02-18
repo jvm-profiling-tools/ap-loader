@@ -48,6 +48,8 @@ Or you can depend on the artifacts from maven central, they should be slightly m
 
 Others are of course available, see [maven central](https://search.maven.org/artifact/me.bechberger/ap-loader).
 
+You can also use [JBang](https://jbang.dev) to simplify the usage of ap-loader. There are examples in documentation below.
+
 Supported Platforms
 -------------------
 
@@ -68,7 +70,17 @@ Commands
 
 The following is a more in-depth description of the commands of `java -jar ap-loader.jar`.
 
-Be aware that it is recommended to use run the JVM with the
+To run with JBang you can do `jbang ap-loader@jvm-profiling-tools/ap-loader` or install it as an application:
+
+```sh
+jbang app install ap-loader@jvm-profiling-tools/ap-loader
+```
+
+and run it directly with `ap-loader` instead of `java -jar ap-loader.jar`.
+
+If you want to install a specific `ap-loader` rather than latest you can use `jbang app install me.bechberger:ap-loader-all:<version>`.
+
+Be aware that it is recommended to run the JVM with the
 `-XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints` flags.
 This improves the accuracy of the profiler.
 
@@ -158,6 +170,12 @@ This can be used to profile a Java process from the start.
 ```sh
 # Profile the application and output a flame graph
 java -javaagent:ap-loader.jar=start,event=cpu,file=profile.html <java arguments>
+```
+
+With JBang you can do:
+
+```sh
+jbang --javaagent:ap-loader@jvm-profiling-tools/ap-loader=start,event=cpu,file=profile.html <java arguments>
 ```
 
 See the [GitHub page of async-profiler](https://github.com/jvm-profiling-tools/async-profiler) for more details.
