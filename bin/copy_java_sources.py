@@ -8,26 +8,33 @@ import os
 import shutil
 import sys
 from pathlib import Path
+from typing import Tuple, Optional
 
 BASEDIR = Path(sys.argv[1])
 RELEASE = sys.argv[2]
 VERSION = RELEASE.split("-")[0]
-AP_SOURCE_DIR = BASEDIR / "ap-releases" / f"async-profiler-{VERSION}-code" / "src"
-AP_CONVERTER_SOURCE_DIR = AP_SOURCE_DIR / "converter"
-AP_RESOURCES_SOURCE_DIR = AP_SOURCE_DIR / "res"
-AP_API_SOURCE_DIR = AP_SOURCE_DIR / "api" / "one" / "profiler"
-TARGET_SOURCE_DIR = BASEDIR / "src" / "main" / "java"
+
+def either(*dirs: Path) -> Path:
+    for dir in dirs:
+        if dir.exists():
+            return dir
+    raise AssertionError(f"None of {', '.join(map(str, dirs))} exists")
+
+
+def either_or_none(*dirs: Path) -> Optional[Path]:
+    return ([dir for dir in dirs if dir.exists()] + [None]) [0]
+
+
+AP_SOURCE_DIR = either(BASEDIR / "ap-releases" / f"async-profiler-{VERSION}-code" / "src")
+AP_CONVERTER_SOURCE_DIR = either(AP_SOURCE_DIR / "converter")
+AP_RESOURCES_SOURCE_DIR = either_or_none(AP_SOURCE_DIR / "res", AP_SOURCE_DIR / "main" / "resources")
+AP_API_SOURCE_DIR = either(AP_SOURCE_DIR / "api" / "one" / "profiler")
+TARGET_SOURCE_DIR = either(BASEDIR / "src" / "main" / "java")
 TARGET_ONE_DIR = TARGET_SOURCE_DIR / "one"
-TARGET_ONE_PROFILER_DIR = TARGET_ONE_DIR / "profiler"
+TARGET_ONE_PROFILER_DIR = either(TARGET_ONE_DIR / "profiler")
 TARGET_CONVERTER_DIR = TARGET_ONE_DIR / "converter"
 TARGET_RESOURCES_DIR = BASEDIR / "src" / "main" / "resources"
 
-assert AP_SOURCE_DIR.exists(), f"Source directory {AP_SOURCE_DIR} does not exist"
-assert AP_CONVERTER_SOURCE_DIR.exists(), f"Source directory {AP_CONVERTER_SOURCE_DIR} does not exist"
-assert AP_API_SOURCE_DIR.exists()
-assert TARGET_SOURCE_DIR.exists()
-assert TARGET_ONE_PROFILER_DIR.exists()
-assert AP_RESOURCES_SOURCE_DIR.exists()
 
 PROJECT_FILES = ["AsyncProfilerLoader.java"]
 
@@ -71,13 +78,14 @@ for f in AP_API_SOURCE_DIR.glob("*.java"):
     else:
         shutil.copy(f, target_file)
 
-print("Copy converter resource files")
-for f in AP_RESOURCES_SOURCE_DIR.glob("*"):
-    target_file = TARGET_RESOURCES_DIR / f.name
-    if DRY_RUN:
-        print(f"would copy {f} to {target_file}")
-    else:
-        shutil.copy(f, target_file)
+if AP_RESOURCES_SOURCE_DIR:
+    print("Copy converter resource files")
+    for f in AP_RESOURCES_SOURCE_DIR.glob("*"):
+        target_file = TARGET_RESOURCES_DIR / f.name
+        if DRY_RUN:
+            print(f"would copy {f} to {target_file}")
+        else:
+            shutil.copy(f, target_file)
 
 print("Copy converter directories")
 for directory in AP_CONVERTER_SOURCE_DIR.glob("one/*"):

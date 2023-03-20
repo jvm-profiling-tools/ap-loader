@@ -140,11 +140,14 @@ public final class AsyncProfilerLoader {
   private static String getLibrarySuffix() throws OSNotSupportedException {
     if (librarySuffix == null) {
       String version = getVersion();
+      boolean oldVersion = version.startsWith("1.");
       String os = System.getProperty("os.name").toLowerCase();
       String arch = System.getProperty("os.arch").toLowerCase();
       if (os.startsWith("linux")) {
         if (arch.equals("arm64") || arch.equals("aarch64")) {
           librarySuffix = version + "-linux-aarch64.so";
+        } else if (arch.equals("x86") && oldVersion) {
+          librarySuffix = version + "-linux-x86.so";
         } else if (arch.equals("x86_64") || arch.equals("x64") || arch.equals("amd64")) {
           if (isOnMusl()) {
             librarySuffix = version + "-linux-x64-musl.so";
@@ -155,7 +158,14 @@ public final class AsyncProfilerLoader {
           throw new OSNotSupportedException("Async-profiler does not work on Linux " + arch);
         }
       } else if (os.startsWith("macosx") || os.startsWith("mac os x")) {
-        librarySuffix = version + "-macos.so";
+        if (oldVersion) {
+          if (!arch.contains("x86")) {
+            throw new OSNotSupportedException("Async-profiler does not work on MacOS " + arch);
+          }
+          librarySuffix = version + "-macosx-x86.so";
+        } else {
+          librarySuffix = version + "-macos.so";
+        }
       } else {
         throw new OSNotSupportedException("Async-profiler does not work on " + os);
       }
