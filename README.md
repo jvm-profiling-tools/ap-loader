@@ -4,7 +4,7 @@ Loader for AsyncProfiler
 [![Maven Central](https://img.shields.io/maven-central/v/me.bechberger/ap-loader-all)](https://search.maven.org/search?q=ap-loader) [![GitHub](https://img.shields.io/github/license/jvm-profiling-tools/ap-loader)](https://github.com/jvm-profiling-tools/ap-loader/blob/main/LICENSE)
 
 Packages [async-profiler](https://github.com/jvm-profiling-tools/async-profiler) releases in a JAR
-with an `AsyncProfilerLoader` (version 2.*) that loads the suitable native library for the current platform.
+with an `AsyncProfilerLoader` (version 2.* and 1.8.*) that loads the suitable native library for the current platform.
 
 This is usable as a java agent (same arguments as the async-profiler agent) and as the basis for other libraries.
 The real rationale behind this library is that the async-profiler is a nice tool, but it cannot be easily integrated
@@ -34,7 +34,7 @@ It should be up-to-date with the latest async-profiler release, but if not, feel
 
 To use the library as a dependency, you can depend on `me.bechberger.ap-loader:<version>-<ap-loader-version>-<variant>-SNAPSHOT`
 from the [Sonatype OSS repository](https://s01.oss.sonatype.org/content/repositories/snapshots). 
-See [#usage-in-java-code](Usage in Java Code) for more information. The current ap-loader version is `1`.
+See [#usage-in-java-code](Usage in Java Code) for more information. The current ap-loader version is `4`.
 
 Or you can depend on the artifacts from maven central, they should be slightly more stable:
 
