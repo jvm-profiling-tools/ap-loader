@@ -279,7 +279,7 @@ def test_releases_basic_execution(release: str):
 
 def run_async_profiler_test(test_script: str) -> bool:
     print(f"Execute {test_script}")
-    cmd = f"sh '{TESTS_CODE_DIR}/test/{test_script}'"
+    cmd = f"bash '{TESTS_CODE_DIR}/test/{test_script}'"
     try:
         subprocess.check_call(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return True
