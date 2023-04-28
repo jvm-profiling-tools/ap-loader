@@ -300,6 +300,86 @@ public final class AsyncProfilerLoader {
   }
 
   /**
+   * Extracts a custom agent from the resources
+   *
+   * <p>
+   *
+   * @param classLoader the class loader to load the resources from
+   * @param fileName the name of the file to copy, maps the library name if the fileName does not start with "lib",
+   *                 e.g. "jni" will be treated as "libjni.so" on Linux and as "libjni.dylib" on macOS
+   * @return the path of the library
+   * @throws IOException if the extraction fails
+   */
+  public static Path extractCustomLibraryFromResources(ClassLoader classLoader, String fileName) throws IOException {
+    return extractCustomLibraryFromResources(classLoader, fileName, null);
+  }
+
+  /**
+   * Extracts a custom native library from the resources and returns the alternative source
+   * if the file is not in the resources.
+   *
+   * <p>If the file is extracted, then it is copied to a new temporary folder which is deleted upon JVM exit.</p>
+   *
+   * <p>This method is mainly seen as a helper method to obtain custom native agents for {@link #jattach(Path)} and
+   * {@link #jattach(Path, String)}. It is included in ap-loader to make it easier to write applications that need
+   * custom native libraries.</p>
+   *
+   * <p>This method works on all architectures.</p>
+   *
+   * @param classLoader the class loader to load the resources from
+   * @param fileName the name of the file to copy, maps the library name if the fileName does not start with "lib",
+   *                 e.g. "jni" will be treated as "libjni.so" on Linux and as "libjni.dylib" on macOS
+   * @param alternativeSource the optional resource directory to use if the resource is not found in the resources,
+   *                          this is typically the case when running the application from an IDE, an example would be
+   *                          "src/main/resources" or "target/classes" for maven projects
+   * @return the path of the library
+   * @throws IOException if the extraction fails and the alternative source is not present for the current architecture
+   */
+  public static Path extractCustomLibraryFromResources(ClassLoader classLoader, String fileName, Path alternativeSource) throws IOException {
+    Path filePath = Paths.get(fileName);
+    String name = filePath.getFileName().toString();
+    if (!name.startsWith("lib")) {
+      name = System.mapLibraryName(name);
+    }
+    Path realFilePath = filePath.getParent() == null ? Paths.get(name) : filePath.getParent().resolve(name);
+    Enumeration<URL> indexFiles = classLoader.getResources(realFilePath.toString());
+    if (!indexFiles.hasMoreElements()) {
+       if (alternativeSource == null) {
+         throw new IOException("Could not find library " + fileName + " in resources");
+       }
+       if (!alternativeSource.toFile().isDirectory()) {
+         throw new IOException("Could not find library " + fileName + " in resources and alternative source " + alternativeSource + " is not a directory");
+       }
+       if (alternativeSource.resolve(realFilePath).toFile().exists()) {
+         return alternativeSource.resolve(realFilePath);
+       }
+       throw new IOException("Could not find library " + fileName + " in resources and alternative source " + alternativeSource + " does not contain " + realFilePath);
+    }
+    URL url = indexFiles.nextElement();
+    Path tempDir = Files.createTempDirectory("ap-loader");
+    try {
+      Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+        try (Stream<Path> stream = Files.walk(getExtractionDirectory())) {
+          stream.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+        } catch (IOException ex) {
+          throw new RuntimeException(ex);
+        }
+      }));
+    } catch (RuntimeException e) {
+      throw (IOException) e.getCause();
+    }
+    Path destination = tempDir.resolve(name);
+    try {
+      try (InputStream in = url.openStream()) {
+        Files.copy(in, destination);
+      }
+      return destination;
+    } catch (IOException e) {
+      throw new IOException("Could not copy file " + fileName + " to " + destination, e);
+    }
+  }
+
+  /**
    * Extracts the jattach tool
    *
    * @return path to the extracted jattach tool
@@ -405,6 +485,9 @@ public final class AsyncProfilerLoader {
    * One can therefore start/stop the async-profiler via <code>
    * executeJattach(PID, "load", "libasyncProfiler.so", true, "start"/"stop")</code>.
    *
+   * Use the {@link #jattach(Path)} or {@link #jattach(Path, String)} to load agents via jattach directly,
+   * without the need to construct the command line arguments yourself.
+   *
    * @throws IOException if something went wrong (e.g. the jattach binary is not found or the
    *     execution fails)
    * @throws IllegalStateException if OS or Arch are not supported
@@ -415,6 +498,46 @@ public final class AsyncProfilerLoader {
 
   private static void executeJattachInteractively(String[] args) throws IOException {
     executeCommandInteractively("jattach", processJattachArgs(args));
+  }
+
+  /**
+   * See <a href="https://github.com/apangin/jattach">jattach</a> for more information.
+   *
+   * <p>It loads the passed agent via jattach to the current JVM, mapping
+   * "libasyncProfiler.so" to the extracted async-profiler library for the load command.</p>
+   *
+   * @return true if the agent was successfully attached, false otherwise
+   * @throws IllegalStateException if OS or Arch are not supported
+   */
+  public static boolean jattach(Path agentPath) {
+    return jattach(agentPath, null);
+  }
+
+  /**
+   * See <a href="https://github.com/apangin/jattach">jattach</a> for more information.
+   *
+   * <p>It loads the passed agent via jattach to the current JVM, mapping
+   * "libasyncProfiler.so" to the extracted async-profiler library for the load command.</p>
+   *
+   * @return true if the agent was successfully attached, false otherwise
+   * @throws IllegalStateException if OS or Arch are not supported
+   */
+  public static boolean jattach(Path agentPath, String arguments) {
+    List<String> args = new ArrayList<>();
+    args.add(String.valueOf(getProcessId()));
+    args.add("load");
+    args.add(agentPath.toString());
+    args.add("true");
+    if (arguments != null) {
+      args.add(arguments);
+    }
+    try {
+      executeJattach(args.toArray(new String[0]));
+      return true;
+    } catch (IOException e) {
+      e.printStackTrace();
+      return false;
+    }
   }
 
   private static String[] processConverterArgs(String[] args) throws IOException {
@@ -597,7 +720,12 @@ public final class AsyncProfilerLoader {
     agentmain(agentArgs, instrumentation);
   }
 
-  private static int getProcessId() {
+  /**
+   * Returns the id of the current process
+   *
+   * @throws IllegalStateException if the id can not be obtained, this should never happen
+   */
+  public static int getProcessId() {
     String name = ManagementFactory.getRuntimeMXBean().getName();
     int index = name.indexOf('@');
     if (index < 1) {

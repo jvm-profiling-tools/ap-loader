@@ -17,8 +17,12 @@ import time
 from typing import Any, Dict, List, Union, Tuple, Optional
 from urllib import request
 
-SUB_VERSION = 4
-RELEASE_NOTES = """- `AsyncProfiler.isSupported()` now returns `false` if the OS is not supported by any async-profiler binary, fixes #5"""
+SUB_VERSION = 5
+RELEASE_NOTES = """- Add new jattach methods (`AsyncProfilerLoader.jattach(Path agent, String args)`) to make using it programmatically easier
+- Add new `AsyncProfilerLoader.extractCustomLibraryFromResources(ClassLoader, String)`
+  method to extract a custom library from the resources
+  - this also has a variant that looks in an alternative resource directory if the resource does not exist
+"""
 
 HELP = """
 Usage:

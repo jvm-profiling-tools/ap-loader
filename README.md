@@ -6,9 +6,11 @@ Loader for AsyncProfiler
 Packages [async-profiler](https://github.com/jvm-profiling-tools/async-profiler) releases in a JAR
 with an `AsyncProfilerLoader` (version 2.* and 1.8.*) that loads the suitable native library for the current platform.
 
-This is usable as a java agent (same arguments as the async-profiler agent) and as the basis for other libraries.
+This is usable as a Java agent (same arguments as the async-profiler agent) and as the basis for other libraries.
 The real rationale behind this library is that the async-profiler is a nice tool, but it cannot be easily integrated
 into other Java-based tools.
+
+The `AsyncProfilerLoader` API integrates async-profiler and jattach with a user-friendly interface (see below).
 
 The wrapper is tested against all relevant tests of the async-profiler tool, ensuring that it has the same behavior.
 
@@ -42,7 +44,7 @@ Or you can depend on the artifacts from maven central, they should be slightly m
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader-all</artifactId>
-    <version>2.9-4</version>
+    <version>2.9-5</version>
 </dependency>
 ```
 
@@ -197,6 +199,19 @@ The API of the `AsyncProfilerLoader` can be used to execute all commands of the 
 
 The converters reside in the `one.converter` package.
 
+Attaching a Custom Agent Programmatically
+---------------------------------
+A notable part of the API are the jattach related methods that allow you to call `jattach` to attach
+your own native library to the currently running JVM:
+
+```java
+// extract the agent first from the resources
+Path p = one.profiler.AsyncProfilerLoader.extractCustomLibraryFromResources(....getClassLoader(), "library name");
+// attach the agent to the current JVM
+one.profiler.AsyncProfilerLoader.jattach(p, "optional arguments")
+// -> returns true if jattach succeeded
+```
+
 ### Releases
 
 ```xml
@@ -213,7 +228,7 @@ The latest `all` version can be added via:
 <dependency>
   <groupId>me.bechberger</groupId>
   <artifactId>ap-loader-all</artifactId>
-  <version>2.9-4</version>
+  <version>2.9-5</version>
 </dependency>
 ```
 
@@ -233,7 +248,7 @@ For example for the `all` variant of version 2.9:
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader-all</artifactId>
-    <version>2.9-4-SNAPSHOT</version>
+    <version>2.9-5-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -270,11 +285,11 @@ python3 ./bin/releaser.py download 2.9
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.vversion=2.9 -Dproject.subrelease=4 -Dproject.platform=macos package assembly:single
+mvn -Dproject.vversion=2.9 -Dproject.subrelease=5 -Dproject.platform=macos package assembly:single
 # use it
-java -jar target/ap-loader-macos-2.9-4-full.jar ...
+java -jar target/ap-loader-macos-2.9-5-full.jar ...
 # build the all JAR
-mvn -Dproject.vversion=2.9 -Dproject.subrelease=4 -Dproject.platform=all package assembly:single
+mvn -Dproject.vversion=2.9 -Dproject.subrelease=5 -Dproject.platform=all package assembly:single
 ```
 
 Development
@@ -318,6 +333,13 @@ And the following for a new async-profiler release:
 
 Changelog
 ---------
+
+### v5
+
+- Add new jattach methods (`AsyncProfilerLoader.jattach(Path agent, String args)`) to make using it programmatically easier
+- Add new `AsyncProfilerLoader.extractCustomLibraryFromResources(ClassLoader, String)`
+  method to extract a custom library from the resources
+  - this also has a variant that looks in an alternative resource directory if the resource does not exist
 
 ### v4
 
