@@ -24,6 +24,11 @@ but be aware that its documentation refers you to the async-profiler documentati
 
 _fdtransfer is currently not supported, feel free to create an issue if you need it._
 
+I wrote two blog posts about this project:
+
+1. [AP-Loader: A new way to use and embed async-profiler](https://mostlynerdless.de/blog/2022/11/21/ap-loader-a-new-way-to-use-and-embed-async-profiler/)
+2. [Using Async-Profiler and Jattach Programmatically with AP-Loader](https://mostlynerdless.de/blog/2023/05/02/using-async-profiler-and-jattach-programmatically-with-ap-loader/)
+
 Download
 --------
 
@@ -48,7 +53,7 @@ Or you can depend on the artifacts from maven central, they should be slightly m
 </dependency>
 ```
 
-Others are of course available, see [maven central](https://search.maven.org/artifact/me.bechberger/ap-loader).
+Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/2.9-5).
 
 You can also use [JBang](https://jbang.dev) to simplify the usage of ap-loader. There are examples in documentation below.
 
