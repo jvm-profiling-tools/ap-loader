@@ -145,7 +145,7 @@ public final class AsyncProfilerLoader {
       String arch = System.getProperty("os.arch").toLowerCase();
       if (os.startsWith("linux")) {
         if (arch.equals("arm64") || arch.equals("aarch64")) {
-          librarySuffix = version + "-linux-aarch64.so";
+          librarySuffix = version + "-linux-arm64.so";
         } else if (arch.equals("x86") && oldVersion) {
           librarySuffix = version + "-linux-x86.so";
         } else if (arch.equals("x86_64") || arch.equals("x64") || arch.equals("amd64")) {
