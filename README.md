@@ -39,21 +39,18 @@ As a shortcut, the wrapper for all platforms can be found
 
 It should be up-to-date with the latest async-profiler release, but if not, feel free to create an issue.
 
-To use the library as a dependency, you can depend on `me.bechberger.ap-loader:<version>-<ap-loader-version>-<variant>-SNAPSHOT`
-from the [Sonatype OSS repository](https://s01.oss.sonatype.org/content/repositories/snapshots). 
-See [#usage-in-java-code](Usage in Java Code) for more information. The current ap-loader version is `4`.
-
-Or you can depend on the artifacts from maven central, they should be slightly more stable:
+To use the library as a dependency, you can depend on `me.bechberger.ap-loader-<variant>:<version>-<ap-loader-version>`
+from maven central, e.g:
 
 ```xml
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader-all</artifactId>
-    <version>2.9-5</version>
+    <version>2.9-6</version>
 </dependency>
 ```
 
-Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/2.9-5).
+Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/2.9-6).
 
 You can also use [JBang](https://jbang.dev) to simplify the usage of ap-loader. There are examples in documentation below.
 
@@ -233,46 +230,8 @@ The latest `all` version can be added via:
 <dependency>
   <groupId>me.bechberger</groupId>
   <artifactId>ap-loader-all</artifactId>
-  <version>2.9-5</version>
+  <version>2.9-6</version>
 </dependency>
-```
-
-### Snapshots
-
-```xml
-<dependency>
-    <groupId>me.bechberger</groupId>
-    <artifactId>ap-loader-variant</artifactId>
-    <version>version-SNAPSHOT</version>
-</dependency>
-```
-
-For example for the `all` variant of version 2.9:
-
-```xml
-<dependency>
-    <groupId>me.bechberger</groupId>
-    <artifactId>ap-loader-all</artifactId>
-    <version>2.9-5-SNAPSHOT</version>
-</dependency>
-```
-
-You also have to add the snapshot repository:
-
-```xml
-
-<repositories>
-    <repository>
-        <id>snapshots</id>
-        <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
-        <releases>
-            <enabled>false</enabled>
-        </releases>
-        <snapshots>
-            <enabled>true</enabled>
-        </snapshots>
-    </repository>
-</repositories>
 ```
 
 Build and test
@@ -290,11 +249,11 @@ python3 ./bin/releaser.py download 2.9
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.vversion=2.9 -Dproject.subrelease=5 -Dproject.platform=macos package assembly:single
+mvn -Dproject.vversion=2.9 -Dproject.subrelease=6 -Dproject.platform=macos package assembly:single
 # use it
-java -jar target/ap-loader-macos-2.9-5-full.jar ...
+java -jar target/ap-loader-macos-2.9-6-full.jar ...
 # build the all JAR
-mvn -Dproject.vversion=2.9 -Dproject.subrelease=5 -Dproject.platform=all package assembly:single
+mvn -Dproject.vversion=2.9 -Dproject.subrelease=6 -Dproject.platform=all package assembly:single
 ```
 
 Development
@@ -338,6 +297,10 @@ And the following for a new async-profiler release:
 
 Changelog
 ---------
+
+### v6
+
+- Fix Linux Arm64 release #12 (thanks to @dkrawiec-c for fixing this issue)
 
 ### v5
 
