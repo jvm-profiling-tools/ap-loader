@@ -122,7 +122,7 @@ public final class AsyncProfilerLoader {
   /** Returns the directory used for storing the extracted libraries, binaries and JARs */
   public static Path getExtractionDirectory() throws IOException {
     if (extractionDir == null) {
-      extractionDir = Paths.get(getApplicationsDir(), "me.bechberger.ap-loader", getVersion());
+      extractionDir = getApplicationsDir().resolve(Paths.get("me.bechberger.ap-loader", getVersion()));
       if (Files.notExists(extractionDir)) {
         Files.createDirectories(extractionDir);
       }
@@ -133,16 +133,16 @@ public final class AsyncProfilerLoader {
   /**
    * Returns directory where applications places their files. Specific to operating system
    */
-  private static String getApplicationsDir() {
+  private static Path getApplicationsDir() {
     String os = System.getProperty("os.name").toLowerCase();
-    if (os.contains("linux")) {
+    if (os.startsWith("linux")) {
       String xdgDataHome = System.getenv("XDG_DATA_HOME");
       if (xdgDataHome != null && !xdgDataHome.isEmpty()) {
-        return xdgDataHome;
+        return Paths.get(xdgDataHome);
       }
-      return Paths.get(System.getProperty("user.home"), ".local", "share").toString();
-    } else if (os.contains("mac")) {
-      return Paths.get(System.getProperty("user.home"), "Library", "Application Support").toString();
+      return Paths.get(System.getProperty("user.home"), ".local", "share");
+    } else if (os.startsWith("macosx") || os.startsWith("mac os x")) {
+      return Paths.get(System.getProperty("user.home"), "Library", "Application Support");
     }
     throw new UnsupportedOperationException("Unsupported os " + os);
   }
