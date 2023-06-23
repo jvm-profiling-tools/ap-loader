@@ -17,8 +17,8 @@ import time
 from typing import Any, Dict, List, Union, Tuple, Optional
 from urllib import request
 
-SUB_VERSION = 6
-RELEASE_NOTES = """- Fix Linux Arm64 release #12 (thanks to @dkrawiec-c for fixing this issue)
+SUB_VERSION = 7
+RELEASE_NOTES = """- Drop dev.dirs:directories dependency #13 (thanks to @jsjant for spotting the potential licensing issue and fixing it in #14)
 """
 
 HELP = """

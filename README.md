@@ -46,11 +46,11 @@ from maven central, e.g:
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader-all</artifactId>
-    <version>2.9-6</version>
+    <version>2.9-7</version>
 </dependency>
 ```
 
-Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/2.9-6).
+Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/2.9-7).
 
 You can also use [JBang](https://jbang.dev) to simplify the usage of ap-loader. There are examples in documentation below.
 
@@ -230,7 +230,7 @@ The latest `all` version can be added via:
 <dependency>
   <groupId>me.bechberger</groupId>
   <artifactId>ap-loader-all</artifactId>
-  <version>2.9-6</version>
+  <version>2.9-7</version>
 </dependency>
 ```
 
@@ -249,11 +249,11 @@ python3 ./bin/releaser.py download 2.9
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.vversion=2.9 -Dproject.subrelease=6 -Dproject.platform=macos package assembly:single
+mvn -Dproject.vversion=2.9 -Dproject.subrelease=7 -Dproject.platform=macos package assembly:single
 # use it
-java -jar target/ap-loader-macos-2.9-6-full.jar ...
+java -jar target/ap-loader-macos-2.9-7-full.jar ...
 # build the all JAR
-mvn -Dproject.vversion=2.9 -Dproject.subrelease=6 -Dproject.platform=all package assembly:single
+mvn -Dproject.vversion=2.9 -Dproject.subrelease=7 -Dproject.platform=all package assembly:single
 ```
 
 Development
@@ -297,6 +297,10 @@ And the following for a new async-profiler release:
 
 Changelog
 ---------
+
+### v7
+
+- Drop dev.dirs:directories dependency #13 (thanks to @jsjant for spotting the potential licensing issue and fixing it in #14)
 
 ### v6
 
