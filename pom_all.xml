@@ -222,13 +222,6 @@
             </plugin>
         </plugins>
     </build>
-    <dependencies>
-        <dependency>
-            <groupId>dev.dirs</groupId>
-            <artifactId>directories</artifactId>
-            <version>26</version>
-        </dependency>
-    </dependencies>
     <distributionManagement>
         <snapshotRepository>
             <id>ossrh</id>

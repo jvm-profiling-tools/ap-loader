@@ -17,8 +17,6 @@
 
 package one.profiler;
 
-import dev.dirs.ProjectDirectories;
-
 import java.io.*;
 import java.lang.instrument.Instrumentation;
 import java.lang.management.ManagementFactory;
@@ -124,14 +122,29 @@ public final class AsyncProfilerLoader {
   /** Returns the directory used for storing the extracted libraries, binaries and JARs */
   public static Path getExtractionDirectory() throws IOException {
     if (extractionDir == null) {
-      extractionDir =
-          Paths.get(
-              ProjectDirectories.from("me", "bechberger", "ap-loader-" + getVersion()).dataDir);
+      extractionDir = Paths.get(getApplicationsDir(), "me.bechberger.ap-loader", getVersion());
       if (Files.notExists(extractionDir)) {
         Files.createDirectories(extractionDir);
       }
     }
     return extractionDir;
+  }
+
+  /**
+   * Returns directory where applications places their files. Specific to operating system
+   */
+  private static String getApplicationsDir() {
+    String os = System.getProperty("os.name").toLowerCase();
+    if (os.contains("linux")) {
+      String xdgDataHome = System.getenv("XDG_DATA_HOME");
+      if (xdgDataHome != null && !xdgDataHome.isEmpty()) {
+        return xdgDataHome;
+      }
+      return Paths.get(System.getProperty("user.home"), ".local", "share").toString();
+    } else if (os.contains("mac")) {
+      return Paths.get(System.getProperty("user.home"), "Library", "Application Support").toString();
+    }
+    throw new UnsupportedOperationException("Unsupported os " + os);
   }
 
   /**
