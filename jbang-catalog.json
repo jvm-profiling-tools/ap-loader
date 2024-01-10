@@ -24,6 +24,20 @@
       "script-ref": "https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar",
       "main": "one.converter.Main",
       "java-agents": []
+    },
+    "profiler": {
+      "script-ref": "ap-loader@jvm-profiling-tools/ap-loader",
+      "arguments": [
+        "profiler"
+      ],
+      "java-agents": []
+    },
+    "jattach": {
+      "script-ref": "ap-loader@jvm-profiling-tools/ap-loader",
+      "arguments": [
+        "jattach"
+      ],
+      "java-agents": []
     }
   },
   "templates": {}
