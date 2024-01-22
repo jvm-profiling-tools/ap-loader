@@ -4,7 +4,11 @@ Loader for AsyncProfiler
 [![Maven Central](https://img.shields.io/maven-central/v/me.bechberger/ap-loader-all)](https://search.maven.org/search?q=ap-loader) [![GitHub](https://img.shields.io/github/license/jvm-profiling-tools/ap-loader)](https://github.com/jvm-profiling-tools/ap-loader/blob/main/LICENSE)
 
 Packages [async-profiler](https://github.com/jvm-profiling-tools/async-profiler) releases in a JAR
-with an `AsyncProfilerLoader` (version 2.* and 1.8.*) that loads the suitable native library for the current platform.
+with an `AsyncProfilerLoader` (version 3.*, 2.* and 1.8.*)
+that loads the suitable native library for the current platform.
+
+*In 3.* it also includes the latest [jattach](https://github.com/apangin/jattach) binary. This was previously
+part of async-profiler.*
 
 This is usable as a Java agent (same arguments as the async-profiler agent) and as the basis for other libraries.
 The real rationale behind this library is that the async-profiler is a nice tool, but it cannot be easily integrated
@@ -46,11 +50,11 @@ from maven central, e.g:
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader-all</artifactId>
-    <version>2.9-7</version>
+    <version>3.0-8</version>
 </dependency>
 ```
 
-Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/2.9-7).
+Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/3.0-8).
 
 You can also use [JBang](https://jbang.dev) to simplify the usage of ap-loader. There are examples in documentation below.
 
@@ -230,7 +234,7 @@ The latest `all` version can be added via:
 <dependency>
   <groupId>me.bechberger</groupId>
   <artifactId>ap-loader-all</artifactId>
-  <version>2.9-7</version>
+  <version>3.0-8</version>
 </dependency>
 ```
 
@@ -244,16 +248,16 @@ It requires a platform supported by async-profiler and Python 3.6+.
 
 ```sh
 # download the release sources and binaries
-python3 ./bin/releaser.py download 2.9
+python3 ./bin/releaser.py download 3.0
 
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.vversion=2.9 -Dproject.subrelease=7 -Dproject.platform=macos package assembly:single
+mvn -Dproject.vversion=3.0 -Dproject.subrelease=7 -Dproject.platform=macos package assembly:single
 # use it
-java -jar target/ap-loader-macos-2.9-7-full.jar ...
+java -jar target/ap-loader-macos-3.0-8-full.jar ...
 # build the all JAR
-mvn -Dproject.vversion=2.9 -Dproject.subrelease=7 -Dproject.platform=all package assembly:single
+mvn -Dproject.vversion=3.0 -Dproject.subrelease=7 -Dproject.platform=all package assembly:single
 ```
 
 Development
@@ -297,6 +301,14 @@ And the following for a new async-profiler release:
 
 Changelog
 ---------
+
+### v8
+
+- Support for [async-profiler 3.0](https://github.com/async-profiler/async-profiler/releases/tag/v3.0)
+- Breaking changes with async-profiler 3.0:
+  - async-profiler 3.0 changed the meaning of the `--lib` option from `--lib path        full path to libasyncProfiler.so in the container`
+    to `-l, --lib         prepend library names`, so the `AsyncProfilerLoader` will throw an UnsupportedOperation exception
+    when using the `--lib` option with a path argument and async-profiler 3.0 or higher
 
 ### v7
 

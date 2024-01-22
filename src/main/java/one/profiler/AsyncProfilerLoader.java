@@ -50,13 +50,16 @@ public final class AsyncProfilerLoader {
   }
 
   private static final String EXTRACTION_PROPERTY_NAME = "ap_loader_extraction_dir";
-  private static String librarySuffix;
+  private static final String PROFILE_LIB_PROPERTY_FILE_PREFIX = "libs/ap-profile-lib-";
+  private static final String PROFILE_SCRIPT_PROPERTY_FILE_PREFIX = "libs/ap-profile-script-";
+  private static String versionAndPlatformSuffix;
   private static Path extractedAsyncProfiler;
   private static Path extractedJattach;
   private static Path extractedProfiler;
   private static Path extractionDir;
   private static List<String> availableVersions;
   private static String version;
+  private static final Map<String, String> propertyFileFirstLineCache = new HashMap<>();
 
   static {
     String dir = System.getProperty(EXTRACTION_PROPERTY_NAME, "");
@@ -122,7 +125,8 @@ public final class AsyncProfilerLoader {
   /** Returns the directory used for storing the extracted libraries, binaries and JARs */
   public static Path getExtractionDirectory() throws IOException {
     if (extractionDir == null) {
-      extractionDir = getApplicationsDir().resolve(Paths.get("me.bechberger.ap-loader", getVersion()));
+      extractionDir =
+          getApplicationsDir().resolve(Paths.get("me.bechberger.ap-loader", getVersion()));
       if (Files.notExists(extractionDir)) {
         Files.createDirectories(extractionDir);
       }
@@ -130,9 +134,7 @@ public final class AsyncProfilerLoader {
     return extractionDir;
   }
 
-  /**
-   * Returns directory where applications places their files. Specific to operating system
-   */
+  /** Returns directory where applications places their files. Specific to operating system */
   private static Path getApplicationsDir() {
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("linux")) {
@@ -148,42 +150,47 @@ public final class AsyncProfilerLoader {
   }
 
   /**
+   * Returns the version and platform suffix like {@code 3.0-linux-x64} or {@code 2.9-macos}
+   *
    * @throws IllegalStateException if OS or Arch not supported
    */
-  private static String getLibrarySuffix() throws OSNotSupportedException {
-    if (librarySuffix == null) {
+  private static String getVersionAndPlatformSuffix() throws OSNotSupportedException {
+    if (versionAndPlatformSuffix == null) {
       String version = getVersion();
-      boolean oldVersion = version.startsWith("1.");
+      boolean versionOne = version.startsWith("1.");
+      boolean versionThree = version.startsWith("3.");
       String os = System.getProperty("os.name").toLowerCase();
       String arch = System.getProperty("os.arch").toLowerCase();
       if (os.startsWith("linux")) {
         if (arch.equals("arm64") || arch.equals("aarch64")) {
-          librarySuffix = version + "-linux-arm64.so";
-        } else if (arch.equals("x86") && oldVersion) {
-          librarySuffix = version + "-linux-x86.so";
+          versionAndPlatformSuffix = version + "-linux-arm64";
+        } else if (arch.equals("x86") && versionOne) {
+          versionAndPlatformSuffix = version + "-linux-x86";
         } else if (arch.equals("x86_64") || arch.equals("x64") || arch.equals("amd64")) {
-          if (isOnMusl()) {
-            librarySuffix = version + "-linux-x64-musl.so";
+          if (versionThree) {
+            versionAndPlatformSuffix = version + "-linux-x64";
+          } else if (isOnMusl()) {
+            versionAndPlatformSuffix = version + "-linux-x64-musl";
           } else {
-            librarySuffix = version + "-linux-x64.so";
+            versionAndPlatformSuffix = version + "-linux-x64";
           }
         } else {
           throw new OSNotSupportedException("Async-profiler does not work on Linux " + arch);
         }
       } else if (os.startsWith("macosx") || os.startsWith("mac os x")) {
-        if (oldVersion) {
+        if (versionOne) {
           if (!arch.contains("x86")) {
             throw new OSNotSupportedException("Async-profiler does not work on MacOS " + arch);
           }
-          librarySuffix = version + "-macosx-x86.so";
+          versionAndPlatformSuffix = version + "-macosx-x86";
         } else {
-          librarySuffix = version + "-macos.so";
+          versionAndPlatformSuffix = version + "-macos";
         }
       } else {
         throw new OSNotSupportedException("Async-profiler does not work on " + os);
       }
     }
-    return librarySuffix;
+    return versionAndPlatformSuffix;
   }
 
   /** Get available versions of the library */
@@ -210,6 +217,32 @@ public final class AsyncProfilerLoader {
       }
     }
     return availableVersions;
+  }
+
+  /**
+   * Reads the first line of the file in the resources folder with the given name.
+   *
+   * <p>Caches this information
+   */
+  private static String readFirstPropertyFileLine(String file) {
+    if (propertyFileFirstLineCache.containsKey(file)) {
+      return propertyFileFirstLineCache.get(file);
+    }
+    try {
+      Enumeration<URL> indexFiles = AsyncProfilerLoader.class.getClassLoader().getResources(file);
+      if (indexFiles.hasMoreElements()) {
+        URL indexFile = indexFiles.nextElement();
+        try (BufferedReader reader =
+            new BufferedReader(new InputStreamReader(indexFile.openStream()))) {
+          String firstLine = reader.readLine().trim();
+          propertyFileFirstLineCache.put(file, firstLine);
+          return firstLine;
+        }
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    throw new AssertionError("Reading property file " + file + " failed, this should never fail");
   }
 
   /**
@@ -241,21 +274,36 @@ public final class AsyncProfilerLoader {
   }
 
   private static String getAsyncProfilerFileName() throws OSNotSupportedException {
-    return "libasyncProfiler-" + getLibrarySuffix();
+    return readFirstPropertyFileLine(
+        PROFILE_LIB_PROPERTY_FILE_PREFIX + getVersionAndPlatformSuffix());
+  }
+
+  private static String getLibrarySuffix(String fileName) {
+    for (String suffix : Arrays.asList(".so", ".dylib", ".dll")) {
+      if (fileName.endsWith(suffix)) {
+        return suffix;
+      }
+    }
+    throw new IllegalStateException("Could not determine library suffix for " + fileName);
+  }
+
+  private static String getExtractedAsyncProfilerFile() throws OSNotSupportedException {
+    return "lib/libasyncProfiler" + getLibrarySuffix(getAsyncProfilerFileName());
   }
 
   private static String getJattachFileName() throws OSNotSupportedException {
-    return "jattach-" + getLibrarySuffix().replace(".so", "");
+    return "jattach-" + getVersionAndPlatformSuffix();
   }
 
-  private static String getProfilerFileName() {
-    return "profiler-" + getVersion() + ".sh";
+  private static String getProfilerFileName() throws OSNotSupportedException {
+    return readFirstPropertyFileLine(
+        PROFILE_SCRIPT_PROPERTY_FILE_PREFIX + getVersionAndPlatformSuffix());
   }
 
   private static boolean hasFileInResources(String fileName) {
     try {
       Enumeration<URL> indexFiles =
-          AsyncProfilerLoader.class.getClassLoader().getResources("libs/" + fileName);
+          AsyncProfilerLoader.class.getClassLoader().getResources(fileName);
       return indexFiles.hasMoreElements();
     } catch (IOException e) {
       e.printStackTrace();
@@ -284,7 +332,7 @@ public final class AsyncProfilerLoader {
    */
   public static boolean isSupported() {
     try {
-      return hasFileInResources(getAsyncProfilerFileName());
+      return hasFileInResources(PROFILE_LIB_PROPERTY_FILE_PREFIX + getVersionAndPlatformSuffix());
     } catch (OSNotSupportedException e) {
       return false;
     }
@@ -318,66 +366,90 @@ public final class AsyncProfilerLoader {
    * <p>
    *
    * @param classLoader the class loader to load the resources from
-   * @param fileName the name of the file to copy, maps the library name if the fileName does not start with "lib",
-   *                 e.g. "jni" will be treated as "libjni.so" on Linux and as "libjni.dylib" on macOS
+   * @param fileName the name of the file to copy, maps the library name if the fileName does not
+   *     start with "lib", e.g. "jni" will be treated as "libjni.so" on Linux and as "libjni.dylib"
+   *     on macOS
    * @return the path of the library
    * @throws IOException if the extraction fails
    */
-  public static Path extractCustomLibraryFromResources(ClassLoader classLoader, String fileName) throws IOException {
+  public static Path extractCustomLibraryFromResources(ClassLoader classLoader, String fileName)
+      throws IOException {
     return extractCustomLibraryFromResources(classLoader, fileName, null);
   }
 
   /**
-   * Extracts a custom native library from the resources and returns the alternative source
-   * if the file is not in the resources.
+   * Extracts a custom native library from the resources and returns the alternative source if the
+   * file is not in the resources.
    *
-   * <p>If the file is extracted, then it is copied to a new temporary folder which is deleted upon JVM exit.</p>
+   * <p>If the file is extracted, then it is copied to a new temporary folder which is deleted upon
+   * JVM exit.
    *
-   * <p>This method is mainly seen as a helper method to obtain custom native agents for {@link #jattach(Path)} and
-   * {@link #jattach(Path, String)}. It is included in ap-loader to make it easier to write applications that need
-   * custom native libraries.</p>
+   * <p>This method is mainly seen as a helper method to obtain custom native agents for {@link
+   * #jattach(Path)} and {@link #jattach(Path, String)}. It is included in ap-loader to make it
+   * easier to write applications that need custom native libraries.
    *
-   * <p>This method works on all architectures.</p>
+   * <p>This method works on all architectures.
    *
    * @param classLoader the class loader to load the resources from
-   * @param fileName the name of the file to copy, maps the library name if the fileName does not start with "lib",
-   *                 e.g. "jni" will be treated as "libjni.so" on Linux and as "libjni.dylib" on macOS
-   * @param alternativeSource the optional resource directory to use if the resource is not found in the resources,
-   *                          this is typically the case when running the application from an IDE, an example would be
-   *                          "src/main/resources" or "target/classes" for maven projects
+   * @param fileName the name of the file to copy, maps the library name if the fileName does not
+   *     start with "lib", e.g. "jni" will be treated as "libjni.so" on Linux and as "libjni.dylib"
+   *     on macOS
+   * @param alternativeSource the optional resource directory to use if the resource is not found in
+   *     the resources, this is typically the case when running the application from an IDE, an
+   *     example would be "src/main/resources" or "target/classes" for maven projects
    * @return the path of the library
-   * @throws IOException if the extraction fails and the alternative source is not present for the current architecture
+   * @throws IOException if the extraction fails and the alternative source is not present for the
+   *     current architecture
    */
-  public static Path extractCustomLibraryFromResources(ClassLoader classLoader, String fileName, Path alternativeSource) throws IOException {
+  public static Path extractCustomLibraryFromResources(
+      ClassLoader classLoader, String fileName, Path alternativeSource) throws IOException {
     Path filePath = Paths.get(fileName);
     String name = filePath.getFileName().toString();
     if (!name.startsWith("lib")) {
       name = System.mapLibraryName(name);
     }
-    Path realFilePath = filePath.getParent() == null ? Paths.get(name) : filePath.getParent().resolve(name);
+    Path realFilePath =
+        filePath.getParent() == null ? Paths.get(name) : filePath.getParent().resolve(name);
     Enumeration<URL> indexFiles = classLoader.getResources(realFilePath.toString());
     if (!indexFiles.hasMoreElements()) {
-       if (alternativeSource == null) {
-         throw new IOException("Could not find library " + fileName + " in resources");
-       }
-       if (!alternativeSource.toFile().isDirectory()) {
-         throw new IOException("Could not find library " + fileName + " in resources and alternative source " + alternativeSource + " is not a directory");
-       }
-       if (alternativeSource.resolve(realFilePath).toFile().exists()) {
-         return alternativeSource.resolve(realFilePath);
-       }
-       throw new IOException("Could not find library " + fileName + " in resources and alternative source " + alternativeSource + " does not contain " + realFilePath);
+      if (alternativeSource == null) {
+        throw new IOException("Could not find library " + fileName + " in resources");
+      }
+      if (!alternativeSource.toFile().isDirectory()) {
+        throw new IOException(
+            "Could not find library "
+                + fileName
+                + " in resources and alternative source "
+                + alternativeSource
+                + " is not a directory");
+      }
+      if (alternativeSource.resolve(realFilePath).toFile().exists()) {
+        return alternativeSource.resolve(realFilePath);
+      }
+      throw new IOException(
+          "Could not find library "
+              + fileName
+              + " in resources and alternative source "
+              + alternativeSource
+              + " does not contain "
+              + realFilePath);
     }
     URL url = indexFiles.nextElement();
     Path tempDir = Files.createTempDirectory("ap-loader");
     try {
-      Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-        try (Stream<Path> stream = Files.walk(getExtractionDirectory())) {
-          stream.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
-        } catch (IOException ex) {
-          throw new RuntimeException(ex);
-        }
-      }));
+      Runtime.getRuntime()
+          .addShutdownHook(
+              new Thread(
+                  () -> {
+                    try (Stream<Path> stream = Files.walk(getExtractionDirectory())) {
+                      stream
+                          .sorted(Comparator.reverseOrder())
+                          .map(Path::toFile)
+                          .forEach(File::delete);
+                    } catch (IOException ex) {
+                      throw new RuntimeException(ex);
+                    }
+                  }));
     } catch (RuntimeException e) {
       throw (IOException) e.getCause();
     }
@@ -403,7 +475,9 @@ public final class AsyncProfilerLoader {
     if (extractedJattach == null) {
       Path path = null;
       try {
-        path = copyFromResources(getJattachFileName(), getExtractionDirectory().resolve("jattach"));
+        path =
+            copyFromResources(
+                getJattachFileName(), getExtractionDirectory().resolve(getJattachFileName()));
       } catch (OSNotSupportedException e) {
         throw new IllegalStateException(e.getMessage());
       }
@@ -415,6 +489,10 @@ public final class AsyncProfilerLoader {
     return extractedJattach;
   }
 
+  private static String getExtractedProfilerFile() throws OSNotSupportedException {
+    return "bin/" + getProfilerFileName();
+  }
+
   /**
    * Extracts the profiler.sh script
    *
@@ -424,8 +502,14 @@ public final class AsyncProfilerLoader {
    */
   private static Path getProfilerPath() throws IOException {
     if (extractedProfiler == null) {
-      Path path =
-          copyFromResources(getProfilerFileName(), getExtractionDirectory().resolve("profiler.sh"));
+      Path path;
+      try {
+        Path extracted = getExtractionDirectory().resolve(getExtractedProfilerFile());
+        Files.createDirectories(extracted.getParent());
+        path = copyFromResources(getProfilerFileName(), extracted);
+      } catch (OSNotSupportedException e) {
+        throw new IllegalStateException(e.getMessage());
+      }
       if (!path.toFile().setExecutable(true)) {
         throw new IOException("Could not make profiler.sh (" + path + ") executable");
       }
@@ -444,14 +528,18 @@ public final class AsyncProfilerLoader {
   public static Path getAsyncProfilerPath() throws IOException {
     if (extractedAsyncProfiler == null) {
       try {
-        extractedAsyncProfiler =
-            copyFromResources(
-                getAsyncProfilerFileName(), getExtractionDirectory().resolve("libasyncProfiler.so"));
+        Path extracted = getExtractionDirectory().resolve(getExtractedAsyncProfilerFile());
+        Files.createDirectories(extracted.getParent());
+        extractedAsyncProfiler = copyFromResources(getAsyncProfilerFileName(), extracted);
       } catch (OSNotSupportedException e) {
         throw new IllegalStateException(e.getMessage());
       }
     }
     return extractedAsyncProfiler;
+  }
+
+  private static void ensureAsyncProfilerLoaded() throws IOException {
+    getAsyncProfilerPath();
   }
 
   /** Output and error output of a successful process execution. */
@@ -482,7 +570,8 @@ public final class AsyncProfilerLoader {
     List<String> argList = new ArrayList<>(Arrays.asList(args));
     if (argList.size() >= 4
         && argList.get(1).equals("load")
-        && argList.get(2).endsWith("libasyncProfiler.so")) {
+        && (argList.get(2).endsWith("libasyncProfiler.so")
+            || argList.get(2).endsWith("libasyncProfiler.dylib"))) {
       argList.set(2, getAsyncProfilerPath().toString());
       argList.set(3, "true");
     }
@@ -494,12 +583,12 @@ public final class AsyncProfilerLoader {
    * See <a href="https://github.com/apangin/jattach">jattach</a> for more information.
    *
    * <p>It runs the same as jattach with the only exception that every string that ends with
-   * "libasyncProfiler.so" is mapped to the extracted async-profiler library for the load command.
-   * One can therefore start/stop the async-profiler via <code>
+   * "libasyncProfiler.so" and "libasyncProfiler.dylib" are mapped to the extracted async-profiler
+   * library for the load command. One can therefore start/stop the async-profiler via <code>
    * executeJattach(PID, "load", "libasyncProfiler.so", true, "start"/"stop")</code>.
    *
-   * Use the {@link #jattach(Path)} or {@link #jattach(Path, String)} to load agents via jattach directly,
-   * without the need to construct the command line arguments yourself.
+   * <p>Use the {@link #jattach(Path)} or {@link #jattach(Path, String)} to load agents via jattach
+   * directly, without the need to construct the command line arguments yourself.
    *
    * @throws IOException if something went wrong (e.g. the jattach binary is not found or the
    *     execution fails)
@@ -516,8 +605,8 @@ public final class AsyncProfilerLoader {
   /**
    * See <a href="https://github.com/apangin/jattach">jattach</a> for more information.
    *
-   * <p>It loads the passed agent via jattach to the current JVM, mapping
-   * "libasyncProfiler.so" to the extracted async-profiler library for the load command.</p>
+   * <p>It loads the passed agent via jattach to the current JVM, mapping "libasyncProfiler.so" and
+   * "libasyncProfiler.dylib" to the extracted async-profiler library for the load command.
    *
    * @return true if the agent was successfully attached, false otherwise
    * @throws IllegalStateException if OS or Arch are not supported
@@ -529,8 +618,8 @@ public final class AsyncProfilerLoader {
   /**
    * See <a href="https://github.com/apangin/jattach">jattach</a> for more information.
    *
-   * <p>It loads the passed agent via jattach to the current JVM, mapping
-   * "libasyncProfiler.so" to the extracted async-profiler library for the load command.</p>
+   * <p>It loads the passed agent via jattach to the current JVM, mapping "libasyncProfiler.so" and
+   * "libasyncProfiler.dylib" to the extracted async-profiler library for the load command.
    *
    * @return true if the agent was successfully attached, false otherwise
    * @throws IllegalStateException if OS or Arch are not supported
@@ -588,14 +677,45 @@ public final class AsyncProfilerLoader {
   }
 
   private static String[] getEnv() throws IOException {
+    if (getVersion().startsWith("3.")) {
+      return new String[0];
+    }
     return new String[] {
       "JATTACH=" + getJattachPath().toString(), "PROFILER=" + getAsyncProfilerPath()
     };
   }
 
+  private static boolean isShellFile(Path file) {
+    try (BufferedReader reader = new BufferedReader(new FileReader(file.toFile()))) {
+      String firstLine = reader.readLine();
+      return firstLine != null && firstLine.startsWith("#!");
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
+  private static boolean isPossibleLibraryArgument(String arg) {
+    return arg.endsWith(".so") || arg.endsWith(".dylib") || arg.endsWith(".dll");
+  }
+
   private static String[] processProfilerArgs(String[] args) throws IOException {
     List<String> argList = new ArrayList<>();
-    argList.add("sh");
+    if (isShellFile(getProfilerPath())) {
+      argList.add("sh");
+    }
+    if (getVersion().startsWith("3.") && Arrays.asList(args).contains("--lib")) {
+      // --lib changed from `--lib path        full path to libasyncProfiler.so in the container`
+      // to `-l, --lib         prepend library names`
+      // check that this is followed by a non argument, as `--lib` has a new meaning
+      int index = Arrays.asList(args).indexOf("--lib");
+      if (index + 1 < args.length
+          && !args[index + 1].startsWith("-")
+          && isPossibleLibraryArgument(args[index + 1])) {
+        throw new UnsupportedOperationException(
+            "The `--lib path` option is not supported in async-profiler 3.x. "
+                + "Feel free to create an issue at https://github.com/jvm-profiling-tools/ap-loader/issues if you need support for this option.");
+      }
+    }
     argList.add(getProfilerPath().toString());
     argList.addAll(Arrays.asList(args));
     return argList.toArray(new String[0]);
@@ -628,6 +748,7 @@ public final class AsyncProfilerLoader {
   }
 
   private static void executeProfilerInteractively(String[] args) throws IOException {
+    ensureAsyncProfilerLoaded();
     String[] command = processProfilerArgs(args);
     Process proc = Runtime.getRuntime().exec(command, getEnv());
     try (BufferedReader stdout = new BufferedReader(new InputStreamReader(proc.getInputStream()));
