@@ -20,7 +20,11 @@ from typing import Any, Dict, List, Union, Tuple, Optional
 from urllib import request
 
 SUB_VERSION = 8
-RELEASE_NOTES = """- Drop dev.dirs:directories dependency #13 (thanks to @jsjant for spotting the potential licensing issue and fixing it in #14)
+RELEASE_NOTES = """- Support for [async-profiler 3.0](https://github.com/async-profiler/async-profiler/releases/tag/v3.0)
+- Breaking changes with async-profiler 3.0:
+  - async-profiler 3.0 changed the meaning of the `--lib` option from `--lib path        full path to libasyncProfiler.so in the container`
+    to `-l, --lib         prepend library names`, so the `AsyncProfilerLoader` will throw an UnsupportedOperation exception
+    when using the `--lib` option with a path argument and async-profiler 3.0 or higher
 """
 
 HELP = """

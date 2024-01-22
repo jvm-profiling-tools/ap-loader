@@ -68,10 +68,10 @@ Variants
 --------
 The JAR can be obtained in the following variants:
 
-- `macos`, `linux-x64`, ...: `jattach`, `profiler.sh` and `libasyncProfiler.so` for the given platform
+- `macos`, `linux-x64`, ...: `jattach`, `profiler.sh`/`asprof` and `libasyncProfiler.so` for the given platform
 - `all`: all of the above
 
-Regarding file sizes: The `all` variant are typically around 800KB and the individual variants around 200 to 400KB.
+Regarding file sizes: The `all` variant are` `typically around 800KB and the individual variants around 200 to 400KB.
 
 Commands
 --------
@@ -99,7 +99,7 @@ Usage: java -jar ap-loader.jar <command> [args]
 Commands:
   help         show this help
   jattach      run the included jattach binary
-  profiler     run the included profiler.sh
+  profiler     run the included profiler.sh/asprof script
   agentpath    prints the path of the extracted async-profiler agent
   jattachpath  prints the path of the extracted jattach binary
   supported    fails if this JAR does not include a profiler for the current OS and architecture
@@ -128,7 +128,7 @@ See the [GitHub page of jattach](https://github.com/apangin/jattach) for more de
 
 ### profiler
 
-`java -jar ap-loader.jar profiler` is equivalent to calling the suitable `profiler.sh`:
+`java -jar ap-loader.jar profiler` is equivalent to calling the suitable `profiler.sh`/`asprof`:
 
 ```sh
 # Profile a process for `n` seconds
