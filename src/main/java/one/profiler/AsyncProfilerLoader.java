@@ -642,13 +642,15 @@ public final class AsyncProfilerLoader {
     }
   }
 
-  private static String[] processConverterArgs(String[] args) throws IOException {
+  private static String[] processConverterArgs(String[] args) {
     List<String> argList = new ArrayList<>();
     argList.add(System.getProperty("java.home") + "/bin/java");
     argList.add("-cp");
     argList.add(System.getProperty("java.class.path"));
     List<String> profilerArgs = new ArrayList<>(Arrays.asList(args));
-    if (profilerArgs.size() > 0 && profilerArgs.get(0).startsWith("jfr")) {
+    if (profilerArgs.size() > 0
+        && (profilerArgs.get(0).startsWith("jfr")
+            || profilerArgs.get(0).startsWith("FlameGraph"))) {
       profilerArgs.set(0, "one.converter." + profilerArgs.get(0));
     } else {
       profilerArgs.add("one.converter.Main");

@@ -302,6 +302,10 @@ And the following for a new async-profiler release:
 Changelog
 ---------
 
+### Unreleased
+
+- Fix FlameGraph converter [#22](https://github.com/jvm-profiling-tools/ap-loader/issues/22)
+
 ### v8
 
 - Support for [async-profiler 3.0](https://github.com/async-profiler/async-profiler/releases/tag/v3.0)
