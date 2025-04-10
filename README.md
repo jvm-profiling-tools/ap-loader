@@ -4,10 +4,10 @@ Loader for AsyncProfiler
 [![Maven Central](https://img.shields.io/maven-central/v/me.bechberger/ap-loader-all)](https://search.maven.org/search?q=ap-loader) [![GitHub](https://img.shields.io/github/license/jvm-profiling-tools/ap-loader)](https://github.com/jvm-profiling-tools/ap-loader/blob/main/LICENSE)
 
 Packages [async-profiler](https://github.com/jvm-profiling-tools/async-profiler) releases in a JAR
-with an `AsyncProfilerLoader` (version 3.*, 2.* and 1.8.*)
+with an `AsyncProfilerLoader` (version 4.*, 3.*, 2.* and 1.8.*)
 that loads the suitable native library for the current platform.
 
-*In 3.* it also includes the latest [jattach](https://github.com/apangin/jattach) binary. This was previously
+*In >= 3.* it also includes the latest [jattach](https://github.com/apangin/jattach) binary. This was previously
 part of async-profiler.*
 
 This is usable as a Java agent (same arguments as the async-profiler agent) and as the basis for other libraries.
@@ -50,11 +50,11 @@ from maven central, e.g:
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader-all</artifactId>
-    <version>3.0-9</version>
+    <version>4.0-9</version>
 </dependency>
 ```
 
-Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/3.0-9).
+Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.0-9).
 
 You can also use [JBang](https://jbang.dev) to simplify the usage of ap-loader. There are examples in documentation below.
 
@@ -234,7 +234,7 @@ The latest `all` version can be added via:
 <dependency>
   <groupId>me.bechberger</groupId>
   <artifactId>ap-loader-all</artifactId>
-  <version>3.0-9</version>
+  <version>4.0-9</version>
 </dependency>
 ```
 
@@ -248,16 +248,16 @@ It requires a platform supported by async-profiler and Python 3.6+.
 
 ```sh
 # download the release sources and binaries
-python3 ./bin/releaser.py download 3.0
+python3 ./bin/releaser.py download 4.0
 
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.vversion=3.0 -Dproject.subrelease=9 -Dproject.platform=macos package assembly:single
+mvn -Dproject.vversion=4.0 -Dproject.subrelease=9 -Dproject.platform=macos package assembly:single
 # use it
-java -jar target/ap-loader-macos-3.0-9-full.jar ...
+java -jar target/ap-loader-macos-4.0-9-full.jar ...
 # build the all JAR
-mvn -Dproject.vversion=3.0 -Dproject.subrelease=9 -Dproject.platform=all package assembly:single
+mvn -Dproject.vversion=4.0 -Dproject.subrelease=9 -Dproject.platform=all package assembly:single
 ```
 
 Development
@@ -287,7 +287,7 @@ Commands:
     clear             clear the ap-releases and target folders for a fresh start
 ```
 
-Deploy the latest version via ` bin/releaser.py download build test deploy` as a snapshot.
+Deploy the latest version via `bin/releaser.py download build test deploy` as a snapshot.
 
 For a release use `bin/releaser.py download build test deploy_release`,
 but before make sure to do the following for a new sub release:

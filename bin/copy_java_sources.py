@@ -107,8 +107,9 @@ for f in AP_CONVERTER_SOURCE_DIR.glob("*.java"):
         with open(f, "r") as source:
             content = "package one.converter;\n" + source.read()
         if f.name == "Main.java":
-            assert "java -cp converter.jar" in content
+            assert "java -cp converter.jar" in content or "jfrconv [options]" in content
             content = content.replace("java -cp converter.jar ", "java -cp ap-loader.jar one.converter.")
+            content = content.replace("jfrconv [options]", "java -jar ap-loader.jar jfrconv [options]")
         elif "Usage: java " in content:
             content = content.replace("Usage: java ", "Usage: java -cp ap-loader.jar ")
         with open(target_file, "w") as target:

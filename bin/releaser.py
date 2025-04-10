@@ -159,7 +159,7 @@ def get_release_versions(tool: Tool) -> List[str]:
 
 def get_most_recent_release(tool: Tool) -> str:
     return [version for version in get_release_versions(tool) if
-            version.startswith("3.") or version.startswith("2.")][0]
+            version.startswith("3.") or version.startswith("4.") or version.startswith("2.")][0]
 
 
 def get_release_info(tool: Tool, release: str) -> str:
@@ -530,7 +530,7 @@ def cli():
         get_most_recent_release(Tool.ASYNC_PROFILER)),
         "versions": lambda: print(" ".join(
             version for version in get_release_versions(Tool.ASYNC_PROFILER) if
-            version.startswith("2.") or version.startswith("3."))),
+            version.startswith("2.") or version.startswith("3.") or version.startswith("4."))),
         "download": lambda: download_release(release),
         "build": lambda: build_release(release),
         "test": lambda: test_release(release),
