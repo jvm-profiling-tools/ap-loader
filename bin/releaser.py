@@ -15,12 +15,16 @@ import sys
 import tempfile
 import time
 from enum import Enum
+from math import expm1
 from pathlib import Path
 from typing import Any, Dict, List, Union, Tuple, Optional
 from urllib import request
 
-SUB_VERSION = 9
-RELEASE_NOTES = """- Fix FlameGraph converter [#22](https://github.com/jvm-profiling-tools/ap-loader/issues/22)
+SUB_VERSION = 10
+RELEASE_NOTES = """- Drop support for async-profiler < 4.0 versions, as 4.0 changed how its tested
+- Major changes in the usage of the JFR conversion made by async-profiler 
+  which are not hidden
+- Clean up the code
 """
 
 HELP = """
@@ -158,8 +162,11 @@ def get_release_versions(tool: Tool) -> List[str]:
 
 
 def get_most_recent_release(tool: Tool) -> str:
-    return [version for version in get_release_versions(tool) if
-            version.startswith("3.") or version.startswith("4.") or version.startswith("2.")][0]
+    def check_version(version: str) -> bool:
+        if tool == Tool.ASYNC_PROFILER:
+            return version.startswith("4.")
+        return version.startswith( "2.")
+    return [version for version in get_release_versions(tool) if check_version(version)][0]
 
 
 def get_release_info(tool: Tool, release: str) -> str:
@@ -302,22 +309,35 @@ def build_tests(release: str):
     release_file = release_target_file(release, "all")
     shutil.copytree(code_folder, TESTS_CODE_DIR)
     test_folder = f"{TESTS_CODE_DIR}/test"
-    for file in os.listdir(test_folder):
-        if file.endswith(".java"):
-            execute(f"javac {test_folder}/{file}")
-        if file.endswith(".sh") and not file.startswith("fd"):
-            with open(f"{test_folder}/{file}") as f:
-                content = f.read()
-            content = content.replace("../profiler.sh ",
-                                      f"java -jar '{release_file}' profiler ").replace(
-                "../build/bin/asprof",
-                f"java -jar '{release_file}' profiler").replace(
-                "-agentpath:../build/libasyncProfiler.so",
-                f"-javaagent:{release_file}").replace(
-                "-agentpath:$(ls ../build/lib/libasyncProfiler.*)",
-                f"-javaagent:{release_file}")
-            with open(f"{test_folder}/{file}", "w") as f:
-                f.write(content)
+    # walk all files in the folder recursively and replace the paths
+    # to the release file
+    for root, dirs, files in os.walk(TESTS_CODE_DIR):
+        for file in files:
+            if file.endswith(".java") or file.endswith("Makefile"):
+                with open(f"{root}/{file}") as f:
+                    content = f.read()
+                content = (content
+                .replace("-source 7 -target 7", "-source 8 -target 8")
+                .replace('cmd.add("-agentpath:" + profilerLibPath() + "=" +',
+                         f'cmd.add("-javaagent:{release_file}" + "=" +')
+                .replace(
+                    'cmd.add("build/bin/asprof")',
+                    f'cmd.addAll(List.of("java", "-jar", "{release_file}", "profiler"))'))
+                if file == "AllocTests.java":
+                    # the startup test doesn't work
+                    # so let's find the @Test annotation in the line before
+                    # 'public void startup(TestProcess p)' and remove it
+                    lines = content.splitlines()
+                    # find startup line
+                    startup_line = next(i for i, line in enumerate(lines) if
+                                         "public void startup(TestProcess p)" in line)
+                    # find the line before
+                    before_startup_line = startup_line - 1
+                    # find the @Test annotation
+                    lines = lines[:before_startup_line] + lines[startup_line:]
+                    content = "\n".join(lines)
+                with open(f"{root}/{file}", "w") as f:
+                    f.write(content)
 
 
 def clear_tests_dir():
@@ -331,6 +351,7 @@ def test_release_basic_execution(release: str, platform: str,
     Tests that the agentpath command returns a usable agent on this platform
     """
     release_file = release_target_file(release, platform)
+    cmd = ""
     try:
         pipe = subprocess.PIPE if not ignore_output else subprocess.DEVNULL
         clear_tests_dir()
@@ -345,23 +366,26 @@ def test_release_basic_execution(release: str, platform: str,
             return False
         profile_file = f"{TESTS_DIR}/profile.jfr"
         cmd = f"java -javaagent:{release_file}=start,file={profile_file},jfr " \
-              f"-cp {TESTS_CODE_DIR}/test ThreadsTarget"
+              f"{CURRENT_DIR}/misc/TestMain.java"
         if not ignore_output:
-            print(f"Execute {cmd}")
+            print(f"Execute cd {CURRENT_DIR}; {cmd}")
         subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=pipe,
                               stderr=pipe)
         if not os.path.exists(profile_file):
             return False
         flamegraph_file = f"{TESTS_DIR}/flamegraph.html"
-        cmd = f"java -jar '{release_file}' converter jfr2flame {profile_file} {flamegraph_file}"
+        cmd = f"java -jar '{release_file}' converter -o html {profile_file} {flamegraph_file}"
         if not ignore_output:
-            print(f"Execute {cmd}")
+            print(f"Execute cd {CURRENT_DIR}; {cmd}")
         subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR, stdout=pipe,
                               stderr=pipe)
         if not os.path.exists(flamegraph_file):
+            print("no flamegraph file")
             return False
         return True
     except subprocess.CalledProcessError:
+        if not ignore_output:
+            print(f"Error executing command: {cmd}")
         return False
 
 
@@ -400,14 +424,10 @@ def run_async_profiler_test(test_script: str) -> bool:
 
 def run_async_profiler_tests():
     print("Run async-profiler tests")
-    test_folder = f"{TESTS_CODE_DIR}/test"
-    failed = False
-    for file in os.listdir(test_folder):
-        if file.endswith(".sh") and not file.startswith("fd"):
-            if not run_async_profiler_test(file):
-                failed = True
-    if failed:
-        raise Exception("Some async-profiler tests failed")
+    try:
+        subprocess.check_call("make test", cwd=TESTS_CODE_DIR, shell=True,)
+    except subprocess.CalledProcessError as ex:
+        raise Exception(f"Some async-profiler tests failed {ex}")
 
 
 def test_release(release: str):
@@ -529,8 +549,7 @@ def cli():
     coms = {"current_version": lambda: print(
         get_most_recent_release(Tool.ASYNC_PROFILER)),
         "versions": lambda: print(" ".join(
-            version for version in get_release_versions(Tool.ASYNC_PROFILER) if
-            version.startswith("2.") or version.startswith("3.") or version.startswith("4."))),
+            version for version in get_release_versions(Tool.ASYNC_PROFILER) if version.startswith("4."))),
         "download": lambda: download_release(release),
         "build": lambda: build_release(release),
         "test": lambda: test_release(release),

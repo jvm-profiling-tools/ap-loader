@@ -5,24 +5,11 @@
       "script-ref": "https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar",
       "description": "async profiler loader. Use directly with `jbang ap-loader@jvm-profiling-tools/ap-loader` or use as agent with `jbang --javaagent\u003dap-loader@jvm-profile-tools/ap-loader ...`."
     },
-    "jfr2nflx": {
-      "script-ref": "https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar",
-      "main": "one.converter.jfr2nflx",
-      "java-agents": []
-    },
-    "jfr2pprof": {
-      "script-ref": "https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar",
-      "main": "one.converter.jfr2pprof",
-      "java-agents": []
-    },
-    "jfr2flame": {
-      "script-ref": "https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar",
-      "main": "one.converter.jfr2flame",
-      "java-agents": []
-    },
     "converter": {
       "script-ref": "https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar",
-      "main": "one.converter.Main",
+      "arguments": [
+        "converter"
+      ],
       "java-agents": []
     },
     "profiler": {

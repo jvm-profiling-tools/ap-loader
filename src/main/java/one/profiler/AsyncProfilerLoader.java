@@ -38,7 +38,7 @@ import java.util.stream.Stream;
  * AsyncProfilerLoader#setExtractionDirectory(Path)}} method.
  *
  * <p>Running this class as an agent main class, makes it an agent that behaves the same as the
- * libasyncProfiler.so agent. Running the main method exposed the profiler.sh, jattach and converter
+ * libasyncProfiler.so agent. Running the main method exposed the asprof, jattach and jfrconv
  * features.
  */
 public final class AsyncProfilerLoader {
@@ -55,6 +55,7 @@ public final class AsyncProfilerLoader {
   private static String versionAndPlatformSuffix;
   private static Path extractedAsyncProfiler;
   private static Path extractedJattach;
+  private static Path extractedJfrconv;
   private static Path extractedProfiler;
   private static Path extractionDir;
   private static List<String> availableVersions;
@@ -118,6 +119,7 @@ public final class AsyncProfilerLoader {
     }
     extractedAsyncProfiler = null;
     extractedJattach = null;
+    extractedJfrconv = null;
     extractedProfiler = null;
     extractionDir = null;
   }
@@ -293,6 +295,10 @@ public final class AsyncProfilerLoader {
 
   private static String getJattachFileName() throws OSNotSupportedException {
     return "jattach-" + getVersionAndPlatformSuffix();
+  }
+
+  private static String getJfrconvFileName() throws OSNotSupportedException {
+    return "jfrconv-" + getVersionAndPlatformSuffix();
   }
 
   private static String getProfilerFileName() throws OSNotSupportedException {
@@ -489,14 +495,39 @@ public final class AsyncProfilerLoader {
     return extractedJattach;
   }
 
+  /**
+   * Extracts the jfrconv tool
+   *
+   * @return path to the extracted jfrconv tool
+   * @throws IllegalStateException if OS or arch are not supported
+   * @throws IOException if the extraction fails
+   */
+  public static Path getJfrconvPath() throws IOException {
+    if (extractedJfrconv == null) {
+      Path path = null;
+      try {
+        path =
+                copyFromResources(
+                        getJfrconvFileName(), getExtractionDirectory().resolve(getJfrconvFileName()));
+      } catch (OSNotSupportedException e) {
+        throw new IllegalStateException(e.getMessage());
+      }
+      if (!path.toFile().setExecutable(true)) {
+        throw new IOException("Could not make jfrconv (" + path + ") executable");
+      }
+      extractedJfrconv = path;
+    }
+    return extractedJfrconv;
+  }
+
   private static String getExtractedProfilerFile() throws OSNotSupportedException {
     return "bin/" + getProfilerFileName();
   }
 
   /**
-   * Extracts the profiler.sh script
+   * Extracts the asprof binary
    *
-   * @return path to the extracted profiler.sh
+   * @return path to the extracted asprof
    * @throws IllegalStateException if OS or arch are not supported
    * @throws IOException if the extraction fails
    */
@@ -511,7 +542,7 @@ public final class AsyncProfilerLoader {
         throw new IllegalStateException(e.getMessage());
       }
       if (!path.toFile().setExecutable(true)) {
-        throw new IOException("Could not make profiler.sh (" + path + ") executable");
+        throw new IOException("Could not make asprof (" + path + ") executable");
       }
       extractedProfiler = path;
     }
@@ -642,40 +673,30 @@ public final class AsyncProfilerLoader {
     }
   }
 
-  private static String[] processConverterArgs(String[] args) {
-    List<String> argList = new ArrayList<>();
-    argList.add(System.getProperty("java.home") + "/bin/java");
-    argList.add("-cp");
-    argList.add(System.getProperty("java.class.path"));
-    List<String> profilerArgs = new ArrayList<>(Arrays.asList(args));
-    if (profilerArgs.size() > 0
-        && (profilerArgs.get(0).startsWith("jfr")
-            || profilerArgs.get(0).startsWith("FlameGraph"))) {
-      profilerArgs.set(0, "one.converter." + profilerArgs.get(0));
-    } else {
-      profilerArgs.add("one.converter.Main");
-    }
-    argList.addAll(profilerArgs);
-    return argList.toArray(new String[0]);
+  private static String[] processConverterArgs(String[] args) throws IOException {
+    List<String> newArgs = new ArrayList<>();
+    newArgs.add(getJfrconvPath().toString());
+    newArgs.addAll(Arrays.asList(args));
+    System.out.println(newArgs);
+    return newArgs.toArray(new String[0]);
   }
 
   /**
    * See <a
-   * href="https://github.com/jvm-profiling-tools/async-profiler/blob/master/src/converter/Main.java">converter</a>
+   * href="https://github.com/async-profiler/async-profiler/blob/master/docs/ConverterUsage.md">Converter Usage</a>
    * for more information.
    *
-   * <p>Just pass it the arguments that you would normally pass to the JVM after <code>
-   * java -cp converter.jar</code>
+   * <p>Just pass it the arguments that you would normally pass to the JVM after <code>jfrconv</code></p>
    *
    * @throws IOException if something went wrong (e.g. the execution fails)
    * @throws IllegalStateException if OS or Arch are not supported
    */
   public static ExecutionResult executeConverter(String... args) throws IOException {
-    return executeCommand("converter", processConverterArgs(args));
+    return executeCommand("jfrconv", processConverterArgs(args));
   }
 
   private static void executeConverterInteractively(String[] args) throws IOException {
-    executeCommandInteractively("converter", processConverterArgs(args));
+    executeCommandInteractively("jfrconv", processConverterArgs(args));
   }
 
   private static String[] getEnv() throws IOException {
@@ -725,7 +746,7 @@ public final class AsyncProfilerLoader {
 
   /**
    * See <a
-   * href="https://github.com/jvm-profiling-tools/async-profiler#profiler-options">profiler.sh</a>
+   * href="https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilerOptions.md">Profiler Options</a>
    * for more information.
    *
    * <p>
@@ -734,7 +755,7 @@ public final class AsyncProfilerLoader {
    * @throws IllegalStateException if OS or Arch are not supported
    */
   public static ExecutionResult executeProfiler(String... args) throws IOException {
-    return executeCommand("profiler", processProfilerArgs(args));
+    return executeCommand("asprof", processProfilerArgs(args));
   }
 
   private static String getApplicationCall() {
@@ -906,7 +927,7 @@ public final class AsyncProfilerLoader {
     out.println("  help         show this help");
     if (isSupported()) {
       out.println("  jattach      run the included jattach binary");
-      out.println("  profiler     run the included profiler.sh");
+      out.println("  profiler     run the included asprof");
       out.println("  agentpath    prints the path of the extracted async-profiler agent");
       out.println("  jattachpath  prints the path of the extracted jattach binary");
     }

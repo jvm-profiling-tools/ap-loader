@@ -4,11 +4,11 @@ Loader for AsyncProfiler
 [![Maven Central](https://img.shields.io/maven-central/v/me.bechberger/ap-loader-all)](https://search.maven.org/search?q=ap-loader) [![GitHub](https://img.shields.io/github/license/jvm-profiling-tools/ap-loader)](https://github.com/jvm-profiling-tools/ap-loader/blob/main/LICENSE)
 
 Packages [async-profiler](https://github.com/jvm-profiling-tools/async-profiler) releases in a JAR
-with an `AsyncProfilerLoader` (version 4.*, 3.*, 2.* and 1.8.*)
+with an `AsyncProfilerLoader` (version 4.*, old releases up to -9 support 3.*, 2.* and 1.8.*)
 that loads the suitable native library for the current platform.
 
-*In >= 3.* it also includes the latest [jattach](https://github.com/apangin/jattach) binary. This was previously
-part of async-profiler.*
+It includes the latest [jattach](https://github.com/apangin/jattach) binary. This was previously
+part of async-profiler.
 
 This is usable as a Java agent (same arguments as the async-profiler agent) and as the basis for other libraries.
 The real rationale behind this library is that the async-profiler is a nice tool, but it cannot be easily integrated
@@ -50,11 +50,11 @@ from maven central, e.g:
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader-all</artifactId>
-    <version>4.0-9</version>
+    <version>4.0-10</version>
 </dependency>
 ```
 
-Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.0-9).
+Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.0-10).
 
 You can also use [JBang](https://jbang.dev) to simplify the usage of ap-loader. There are examples in documentation below.
 
@@ -68,7 +68,7 @@ Variants
 --------
 The JAR can be obtained in the following variants:
 
-- `macos`, `linux-x64`, ...: `jattach`, `profiler.sh`/`asprof` and `libasyncProfiler.so` for the given platform
+- `macos`, `linux-x64`, ...: `jattach`, `asprof`, `jfrconv` and `libasyncProfiler.so` for the given platform
 - `all`: all of the above
 
 Regarding file sizes: The `all` variant are` `typically around 800KB and the individual variants around 200 to 400KB.
@@ -99,7 +99,7 @@ Usage: java -jar ap-loader.jar <command> [args]
 Commands:
   help         show this help
   jattach      run the included jattach binary
-  profiler     run the included profiler.sh/asprof script
+  profiler     run the included asprof script
   agentpath    prints the path of the extracted async-profiler agent
   jattachpath  prints the path of the extracted jattach binary
   supported    fails if this JAR does not include a profiler for the current OS and architecture
@@ -128,7 +128,7 @@ See the [GitHub page of jattach](https://github.com/apangin/jattach) for more de
 
 ### profiler
 
-`java -jar ap-loader.jar profiler` is equivalent to calling the suitable `profiler.sh`/`asprof`:
+`java -jar ap-loader.jar profiler` is equivalent to calling the suitable `asprof`:
 
 ```sh
 # Profile a process for `n` seconds
@@ -234,7 +234,7 @@ The latest `all` version can be added via:
 <dependency>
   <groupId>me.bechberger</groupId>
   <artifactId>ap-loader-all</artifactId>
-  <version>4.0-9</version>
+  <version>4.0-10</version>
 </dependency>
 ```
 
@@ -253,11 +253,11 @@ python3 ./bin/releaser.py download 4.0
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.vversion=4.0 -Dproject.subrelease=9 -Dproject.platform=macos package assembly:single
+mvn -Dproject.vversion=4.0 -Dproject.subrelease=10 -Dproject.platform=macos package assembly:single
 # use it
-java -jar target/ap-loader-macos-4.0-9-full.jar ...
+java -jar target/ap-loader-macos-4.0-10-full.jar ...
 # build the all JAR
-mvn -Dproject.vversion=4.0 -Dproject.subrelease=9 -Dproject.platform=all package assembly:single
+mvn -Dproject.vversion=4.0 -Dproject.subrelease=10 -Dproject.platform=all package assembly:single
 ```
 
 Development
@@ -301,6 +301,13 @@ And the following for a new async-profiler release:
 
 Changelog
 ---------
+
+### v10
+
+- Drop support for async-profiler < 4.0 versions, as 4.0 changed how its tested
+- Major changes in the usage of the JFR conversion made by async-profiler 
+  which are not hidden
+- Clean up the code
 
 ### v9
 
