@@ -446,11 +446,10 @@ def deploy_maven_platform(release: str, platform: str, snapshot: bool):
               f"-Dproject.suffix='{'-SNAPSHOT' if snapshot else ''}' -f {pom} clean deploy"
         try:
             subprocess.check_call(cmd, shell=True, cwd=CURRENT_DIR,
-                                  stdout=subprocess.DEVNULL,
-                                  stderr=subprocess.DEVNULL)  # os.system(f"cd {CURRENT_DIR}; {cmd}")
-        except subprocess.CalledProcessError:
-            os.system(f"cd {CURRENT_DIR}; {cmd}")
-            raise
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)  # os.system(f"cd {CURRENT_DIR}; {cmd}")
+        except BaseException as ex:
+            raise Exception(f"Error deploying {release}-{SUB_VERSION} for {platform} to maven: {ex}, cwd: {CURRENT_DIR}, cmd: {cmd}")
 
 
 def deploy_maven(release: str, snapshot: bool = True):
@@ -527,7 +526,8 @@ def clear():
 
 def parse_cli_args() -> Tuple[List[str], Optional[str]]:
     available_commands = ["current_version", "versions", "download", "build",
-                          "test", "deploy_mvn", "deploy_gh", "deploy",
+                          "test", "deploy_mvn", "deploy_mvn_release",
+                          "deploy_gh", "deploy",
                           "deploy_release", "clear"]
     commands = []
     release = sys.argv[-1] if sys.argv[-1][0].isnumeric() else None
@@ -554,6 +554,7 @@ def cli():
         "build": lambda: build_release(release),
         "test": lambda: test_release(release),
         "deploy_mvn": lambda: deploy_maven(release),
+        "deploy_mvn_release": lambda: deploy_maven(release, snapshot=False),
         "deploy_gh": lambda: deploy_github(release),
         "deploy": lambda: deploy(release, snapshot=True),
         "deploy_release": lambda: deploy(release, snapshot=False),
