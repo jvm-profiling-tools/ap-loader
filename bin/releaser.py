@@ -199,8 +199,8 @@ def release_platform_for_url(archive_url: str) -> str:
 
 
 def get_release_platforms(tool: Tool, release: str) -> List[str]:
-    return [release_platform_for_url(url) for url in
-            get_release_asset_urls(tool, release)]
+    return [platform for platform in [release_platform_for_url(url) for url in
+            get_release_asset_urls(tool, release)] if "debug" not in platform]
 
 
 def get_ending(url: str) -> str:
@@ -211,6 +211,7 @@ def get_ending(url: str) -> str:
 
 def download_latest_jattach(dest_path: Path, platform: str):
     """ Download the latest jattach release from GitHub """
+    print(f"Download latest jattach for {platform} to {dest_path}")
     release = get_most_recent_release(Tool.JATTACH)
     urls = get_release_asset_urls(Tool.JATTACH, release)
     url = ([url for url in urls if
@@ -236,6 +237,7 @@ def download_release_url(release: str, release_url: str):
     os.makedirs(dest_folder, exist_ok=True)
     ending = get_ending(release_url)
     platform = release_platform_for_url(release_url)
+    print(f"Download {release} for {platform} from {release_url}")
     archive_file = f"{dest_folder}/async-profiler-{release}-{platform}{ending}"
     if not os.path.exists(archive_file):
         request.urlretrieve(release_url, archive_file)
@@ -246,11 +248,11 @@ def download_release_url(release: str, release_url: str):
     else:
         raise Exception("Unknown archive type for " + release_url)
     # if dest-folder doesn't contain jattach for this platform, download it
-    if not os.path.exists(
-            f"{dest_folder}/async-profiler-{release}-{platform}/build/jattach"):
-        download_latest_jattach(Path(
-            f"{dest_folder}/async-profiler-{release}-{platform}/build/jattach"),
-                                platform)
+    jattach = f"{dest_folder}/async-profiler-{release}-{platform}/build/jattach"
+    if not os.path.exists(jattach):
+        print(f"jattach not found in {jattach}, downloading it")
+        download_latest_jattach(Path(jattach), platform)
+        assert os.path.exists(jattach), "jattach not found in " + jattach
 
 
 def download_release_code(release: str):
@@ -270,6 +272,8 @@ def download_release_code(release: str):
 
 def download_release(release: str):
     for release_url in get_release_asset_urls(Tool.ASYNC_PROFILER, release):
+        if "debug" in release_url:
+            continue
         download_release_url(release, release_url)
     download_release_code(release)
 

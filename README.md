@@ -50,11 +50,11 @@ from maven central, e.g:
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader-all</artifactId>
-    <version>4.0-10</version>
+    <version>4.1-10</version>
 </dependency>
 ```
 
-Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.0-10).
+Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.1-10).
 
 You can also use [JBang](https://jbang.dev) to simplify the usage of ap-loader. There are examples in documentation below.
 
@@ -234,7 +234,7 @@ The latest `all` version can be added via:
 <dependency>
   <groupId>me.bechberger</groupId>
   <artifactId>ap-loader-all</artifactId>
-  <version>4.0-10</version>
+  <version>4.1-10</version>
 </dependency>
 ```
 
@@ -248,16 +248,16 @@ It requires a platform supported by async-profiler and Python 3.6+.
 
 ```sh
 # download the release sources and binaries
-python3 ./bin/releaser.py download 4.0
+python3 ./bin/releaser.py download 4.1
 
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.vversion=4.0 -Dproject.subrelease=10 -Dproject.platform=macos package assembly:single
+mvn -Dproject.vversion=4.1 -Dproject.subrelease=10 -Dproject.platform=macos package assembly:single
 # use it
-java -jar target/ap-loader-macos-4.0-10-full.jar ...
+java -jar target/ap-loader-macos-4.1-10-full.jar ...
 # build the all JAR
-mvn -Dproject.vversion=4.0 -Dproject.subrelease=10 -Dproject.platform=all package assembly:single
+mvn -Dproject.vversion=4.1 -Dproject.subrelease=10 -Dproject.platform=all package assembly:single
 ```
 
 Development
