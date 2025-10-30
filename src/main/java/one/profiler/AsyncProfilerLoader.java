@@ -913,11 +913,12 @@ public final class AsyncProfilerLoader {
       }
       executeJattach(args.toArray(new String[0]));
     } catch (Exception e) {
-      throw new IllegalStateException("Could not attach to the currentd process", e);
+      throw new IllegalStateException("Could not attach to the current process", e);
     }
   }
 
   public static void agentmain(String agentArgs, Instrumentation instrumentation) {
+    System.out.println("Attaching async-profiler agent to process " + getProcessId());
     attach(agentArgs);
   }
 
