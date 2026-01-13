@@ -29,6 +29,7 @@ AP_SOURCE_DIR = either(BASEDIR / "ap-releases" / f"async-profiler-{VERSION}-code
 AP_CONVERTER_SOURCE_DIR = either(AP_SOURCE_DIR / "converter")
 AP_RESOURCES_SOURCE_DIR = either_or_none(AP_SOURCE_DIR / "res", AP_SOURCE_DIR / "main" / "resources")
 AP_API_SOURCE_DIR = either(AP_SOURCE_DIR / "api" / "one" / "profiler")
+AP_HELPER_SOURCE_DIR = either(AP_SOURCE_DIR / "helper" / "one" / "profiler")
 TARGET_SOURCE_DIR = either(BASEDIR / "src" / "main" / "java")
 TARGET_ONE_DIR = TARGET_SOURCE_DIR / "one"
 TARGET_ONE_PROFILER_DIR = either(TARGET_ONE_DIR / "profiler")
@@ -69,14 +70,15 @@ for f in TARGET_SOURCE_DIR.glob("*.java"):
     else:
         f.unlink()
 
-print("Copy api files")
-assert next(AP_API_SOURCE_DIR.glob("*.java"), "empty") != "empty", f"{AP_API_SOURCE_DIR} is empty"
-for f in AP_API_SOURCE_DIR.glob("*.java"):
-    target_file = TARGET_ONE_PROFILER_DIR / f.name
-    if DRY_RUN:
-        print(f"would copy {f} to {target_file}")
-    else:
-        shutil.copy(f, target_file)
+print("Copy api and helper files")
+for p in [AP_API_SOURCE_DIR, AP_HELPER_SOURCE_DIR]:
+    assert next(p.glob("*.java"), "empty") != "empty", f"{p} is empty"
+    for f in p.glob("*.java"):
+        target_file = TARGET_ONE_PROFILER_DIR / f.name
+        if DRY_RUN:
+            print(f"would copy {f} to {target_file}")
+        else:
+            shutil.copy(f, target_file)
 
 if AP_RESOURCES_SOURCE_DIR:
     print("Copy converter resource files")
