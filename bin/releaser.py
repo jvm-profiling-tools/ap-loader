@@ -20,11 +20,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Union, Tuple, Optional
 from urllib import request
 
-SUB_VERSION = 10
-RELEASE_NOTES = """- Drop support for async-profiler < 4.0 versions, as 4.0 changed how its tested
-- Major changes in the usage of the JFR conversion made by async-profiler 
-  which are not hidden
-- Clean up the code
+SUB_VERSION = 11
+RELEASE_NOTES = """- Fixed JfrSync #25
 """
 
 HELP = """
