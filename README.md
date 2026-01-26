@@ -7,9 +7,6 @@ Packages [async-profiler](https://github.com/jvm-profiling-tools/async-profiler)
 with an `AsyncProfilerLoader` (version 4.*, old releases up to -9 support 3.*, 2.* and 1.8.*)
 that loads the suitable native library for the current platform.
 
-It includes the latest [jattach](https://github.com/apangin/jattach) binary. This was previously
-part of async-profiler.
-
 This is usable as a Java agent (same arguments as the async-profiler agent) and as the basis for other libraries.
 The real rationale behind this library is that the async-profiler is a nice tool, but it cannot be easily integrated
 into other Java-based tools.
@@ -20,6 +17,9 @@ The wrapper is tested against all relevant tests of the async-profiler tool, ens
 
 Take the [`all` build](https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar) and you have a JAR that provides the important features of async-profiler on all supported
 platforms.
+
+Take [`none` build](https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-none.jar)
+when your JVM distribution already provides `libasyncProfiler.so` and `asprof` (e.g., [SapMachine](https://sapmachine.io)).
 
 A changelog can be found in the async-profiler repository, as this library should rarely change itself.
 
@@ -68,10 +68,12 @@ Variants
 --------
 The JAR can be obtained in the following variants:
 
-- `macos`, `linux-x64`, ...: `jattach`, `asprof`, `jfrconv` and `libasyncProfiler.so` for the given platform
+- `macos`, `linux-x64`, ...: `asprof` and `libasyncProfiler.so` for the given platform
 - `all`: all of the above
+- `none`: no native binaries or libraries included
 
-Regarding file sizes: The `all` variant are` `typically around 800KB and the individual variants around 200 to 400KB.
+Regarding file sizes: The `all` variant are typically around 1.2MB and the individual variants around 400 to 600KB.
+The `none` variant is around 200KB.
 
 Commands
 --------
@@ -101,7 +103,6 @@ Commands:
   jattach      run the included jattach binary
   profiler     run the included asprof script
   agentpath    prints the path of the extracted async-profiler agent
-  jattachpath  prints the path of the extracted jattach binary
   supported    fails if this JAR does not include a profiler for the current OS and architecture
   converter    run the included converter
   version      version of the included async-profiler
@@ -302,6 +303,13 @@ And the following for a new async-profiler release:
 Changelog
 ---------
 
+### v12
+- Remove `jattachpath` subcommand
+- Don't ship `jattach` binary anymore
+- Add `none` build which doesn't include any native binaries or libraries
+- Don't ship an extra `jfrconv` binary anymore, use the converter API instead
+- All this gives us a smaller JAR size for [SapMachine](https://sapmachine.io) users
+
 ### v11
 - Fixed JfrSync #25
 
@@ -361,7 +369,6 @@ Changelog
 ## License
 Apache 2.0, Copyright 2023 SAP SE or an SAP affiliate company, Johannes Bechberger
 and ap-loader contributors
-
 
 *This project is maintained by the [SapMachine](https://sapmachine.io) team
 at [SAP SE](https://sap.com)*

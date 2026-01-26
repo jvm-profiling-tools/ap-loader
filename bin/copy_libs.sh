@@ -29,15 +29,6 @@ for ending in "so" "dylib"; do
   fi
 done
 
-cp "$AP_RELEASE/build/jattach" \
-  "target/classes/libs/jattach-$VERSION_PLATFORM"
-
-cp "$AP_RELEASE/build/jattach" \
-  "target/classes/libs/jattach-$VERSION_PLATFORM"
-
-cp "$AP_RELEASE/bin/jfrconv" \
-  "target/classes/libs/jfrconv-$VERSION_PLATFORM"
-
 python3 "$OWN_DIR/timestamp.py" > "target/classes/libs/ap-timestamp-$version"
 echo "$version" > target/classes/libs/ap-version
 
@@ -48,3 +39,5 @@ echo "asprof-$VERSION_PLATFORM" > target/classes/libs/ap-profile-script-$VERSION
 
 echo "Copy Java sources"
 python3 "$OWN_DIR/copy_java_sources.py" "$BASEDIR" "$VERSION_PLATFORM"
+
+echo "lib" > target/classes/libs/ap-profile-script-build

@@ -56,7 +56,8 @@ def prepare_poms(release: str, platform: str, snapshot: bool = True) -> Tuple[
     folder = CURRENT_DIR
     os.makedirs(folder, exist_ok=True)
     suffix = f"-{release}{'-SNAPSHOT' if snapshot else ''}"
-    for pom in ["pom", "pom_all"]:
+    poms = ["pom", "pom_all", "pom_none"]
+    for pom in poms:
         pom_file = f"{CURRENT_DIR}/{pom}.xml"
         dest_pom = f"{folder}/{pom}{suffix}.xml"
         with open(pom_file) as f:
@@ -82,7 +83,7 @@ def prepare_poms(release: str, platform: str, snapshot: bool = True) -> Tuple[
                                  pom_content, count=1)
             with open(dest_pom, "w") as f2:
                 f2.write(pom_content)
-    return f"{folder}/pom{suffix}.xml", f"{folder}/pom_all{suffix}.xml"
+    return f"{folder}/pom{suffix}.xml", f"{folder}/pom_all{suffix}.xml", f"{folder}/pom_none{suffix}.xml"
 
 
 class PreparedPOMs:
@@ -93,13 +94,14 @@ class PreparedPOMs:
         self.snapshot = snapshot
 
     def __enter__(self):
-        self.pom, self.pom_all = prepare_poms(self.release, self.platform,
+        self.pom, self.pom_all, self.pom_none = prepare_poms(self.release, self.platform,
                                               self.snapshot)
         return self
 
     def __exit__(self, *args):
         os.remove(self.pom)
         os.remove(self.pom_all)
+        os.remove(self.pom_none)
 
 
 def execute(args: Union[List[str], str]):
@@ -124,7 +126,6 @@ def download_json(url, path: str) -> Any:
 
 class Tool(Enum):
     ASYNC_PROFILER = "async-profiler"
-    JATTACH = "jattach"
 
 
 def get_releases(tool: Tool) -> List[Dict[str, Any]]:
@@ -133,10 +134,6 @@ def get_releases(tool: Tool) -> List[Dict[str, Any]]:
         return download_json(
             "https://api.github.com/repos/jvm-profiling-tools/async-profiler/releases",
             "releases.json")
-    elif tool == Tool.JATTACH:
-        return download_json(
-            "https://api.github.com/repos/jattach/jattach/releases",
-            "jattach_releases.json")
     else:
         raise Exception("Unknown tool: " + tool.name)
 
@@ -189,8 +186,6 @@ def get_release_asset_urls(tool: Tool, release: str) -> List[str]:
 
 
 def release_platform_for_url(archive_url: str) -> str:
-    if "jattach" in archive_url:
-        return archive_url.split("jattach-")[-1].split(".")[-2]
     return re.split("[0-9][0-9.]+-", archive_url.split("/")[-1])[-1].split(".")[
         0]
 
@@ -206,29 +201,9 @@ def get_ending(url: str) -> str:
         0]
 
 
-def download_latest_jattach(dest_path: Path, platform: str):
-    """ Download the latest jattach release from GitHub """
-    print(f"Download latest jattach for {platform} to {dest_path}")
-    release = get_most_recent_release(Tool.JATTACH)
-    urls = get_release_asset_urls(Tool.JATTACH, release)
-    url = ([url for url in urls if
-            is_compressed_file(url) and release_platform_for_url(
-                url) == platform] + [None])[0]
-    if not url:
-        raise Exception(f"Could not find jattach release for {platform}")
-    ending = get_ending(url)
-    archive_file = f"{CACHE_DIR}/jattach-{release}-{platform}{ending}"
-    if not os.path.exists(archive_file):
-        request.urlretrieve(url, archive_file)
-    Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
-    execute(["tar", "-xzf", archive_file, "-C", dest_path.parent])
-
-
 def download_release_url(release: str, release_url: str):
     """
     Download the release from the given URL and unpack it
-
-    Downloads the latest jattach release too if needed
     """
     dest_folder = f"{CURRENT_DIR}/ap-releases"
     os.makedirs(dest_folder, exist_ok=True)
@@ -244,12 +219,6 @@ def download_release_url(release: str, release_url: str):
         execute(["tar", "-xzf", archive_file, "-C", dest_folder])
     else:
         raise Exception("Unknown archive type for " + release_url)
-    # if dest-folder doesn't contain jattach for this platform, download it
-    jattach = f"{dest_folder}/async-profiler-{release}-{platform}/build/jattach"
-    if not os.path.exists(jattach):
-        print(f"jattach not found in {jattach}, downloading it")
-        download_latest_jattach(Path(jattach), platform)
-        assert os.path.exists(jattach), "jattach not found in " + jattach
 
 
 def download_release_code(release: str):
@@ -294,10 +263,17 @@ def build_release(release: str):
     all_target = release_target_file(release, "all")
     print("Build release for all")
     execute(
-        f"mvn -Duser.name='' -Dproject.vversion={release} -Dproject.subversion={SUB_VERSION} -Dproject.platform=all package assembly:single -f pom_all.xml")
+        f"mvn -Duser.name='' -Dproject.vversion={release} -Dproject.subversion={SUB_VERSION} package assembly:single -f pom_all.xml")
     shutil.copy(
         f"{CURRENT_DIR}/target/ap-loader-all-{release}-{SUB_VERSION}-full.jar",
         all_target)
+    none_target = release_target_file(release, "none")
+    print("Build release that includes no native libraries")
+    execute(
+        f"mvn -Duser.name='' -Dproject.vversion={release} -Dproject.subversion={SUB_VERSION} package assembly:single -f pom_none.xml")
+    shutil.copy(
+        f"{CURRENT_DIR}/target/ap-loader-none-{release}-{SUB_VERSION}-none.jar",
+        none_target)
 
 
 def build_tests(release: str):
@@ -473,7 +449,7 @@ def test_release(release: str):
 def deploy_maven_platform(release: str, platform: str, snapshot: bool):
     print(f"Deploy {release}-{SUB_VERSION} for {platform} to maven")
     with PreparedPOMs(release, platform, snapshot) as poms:
-        pom = poms.pom_all if platform == "all" else poms.pom
+        pom = {"all": poms.pom_all, "none": poms.pom_none}.get(platform, poms.pom)
         cmd = f"mvn -Duser.name='' -Dproject.vversion={release} -Dproject.subversion={SUB_VERSION} -Dproject.platform={platform} " \
               f"-Dproject.suffix='{'-SNAPSHOT' if snapshot else ''}' -f {pom} clean deploy"
         try:
@@ -489,6 +465,7 @@ def deploy_maven(release: str, snapshot: bool = True):
     for platform in get_release_platforms(Tool.ASYNC_PROFILER, release):
         deploy_maven_platform(release, platform, snapshot)
     deploy_maven_platform(release, "all", snapshot)
+    deploy_maven_platform(release, "none", snapshot)
 
 
 def get_changelog(release: str) -> str:
@@ -516,7 +493,7 @@ def deploy_github(release: str):
         releases_dir = f"{CURRENT_DIR}/releases"
         platform_paths = []
         for platform in get_release_platforms(Tool.ASYNC_PROFILER, release) + [
-            "all"]:
+            "all", "none"]:
             path = f"{d}/ap-loader-{platform}.jar"
             shutil.copy(
                 f"{releases_dir}/ap-loader-{platform}-{release}-{SUB_VERSION}.jar",

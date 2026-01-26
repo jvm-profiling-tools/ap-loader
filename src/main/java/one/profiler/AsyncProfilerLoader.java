@@ -38,7 +38,7 @@ import java.util.stream.Stream;
  * AsyncProfilerLoader#setExtractionDirectory(Path)}} method.
  *
  * <p>Running this class as an agent main class, makes it an agent that behaves the same as the
- * libasyncProfiler.so agent. Running the main method exposed the asprof, jattach and jfrconv
+ * libasyncProfiler.so agent. Running the main method exposed the asprof, jattach (via 'asprof load') and jfrconv
  * features.
  */
 public final class AsyncProfilerLoader {
@@ -49,18 +49,25 @@ public final class AsyncProfilerLoader {
     }
   }
 
+  public enum Mode {
+      LIB_INCLUDED,
+      /** Uses the async-profiler library and asprof binary from the currently running JVM or $PATH */
+      USE_SYSTEM_LIB
+  }
+
   private static final String EXTRACTION_PROPERTY_NAME = "ap_loader_extraction_dir";
   private static final String PROFILE_LIB_PROPERTY_FILE_PREFIX = "libs/ap-profile-lib-";
   private static final String PROFILE_SCRIPT_PROPERTY_FILE_PREFIX = "libs/ap-profile-script-";
   private static String versionAndPlatformSuffix;
   private static Path extractedAsyncProfiler;
-  private static Path extractedJattach;
-  private static Path extractedJfrconv;
   private static Path extractedProfiler;
   private static Path extractionDir;
   private static List<String> availableVersions;
   private static String version;
   private static final Map<String, String> propertyFileFirstLineCache = new HashMap<>();
+
+  private static final Mode libraryMode = includesAnyNativeLibraries() ? Mode.LIB_INCLUDED : Mode.USE_SYSTEM_LIB;
+  private static final Path systemLibName = libraryMode == Mode.USE_SYSTEM_LIB ? findNativeLibrary() : null;
 
   static {
     String dir = System.getProperty(EXTRACTION_PROPERTY_NAME, "");
@@ -76,6 +83,26 @@ public final class AsyncProfilerLoader {
       }
       extractionDir = path;
     }
+  }
+
+  private static boolean includesAnyNativeLibraries() {
+    return readSingleLineFromResource("libs/ap-profile-script-build", "none").equals("lib");
+  }
+
+  private static String readSingleLineFromResource(String resourceName, String def) {
+    try (InputStream is = AsyncProfilerLoader.class.getClassLoader().getResourceAsStream(resourceName)) {
+      if (is == null) {
+        return def;
+      }
+      BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+      return reader.readLine();
+    } catch (IOException e) {
+      return def;
+    }
+  }
+
+  public static Mode getLibraryMode() {
+    return libraryMode;
   }
 
   private static String getCurrentJARFileName() {
@@ -118,8 +145,6 @@ public final class AsyncProfilerLoader {
       }
     }
     extractedAsyncProfiler = null;
-    extractedJattach = null;
-    extractedJfrconv = null;
     extractedProfiler = null;
     extractionDir = null;
   }
@@ -127,8 +152,15 @@ public final class AsyncProfilerLoader {
   /** Returns the directory used for storing the extracted libraries, binaries and JARs */
   public static Path getExtractionDirectory() throws IOException {
     if (extractionDir == null) {
-      extractionDir =
-          getApplicationsDir().resolve(Paths.get("me.bechberger.ap-loader", getVersion()));
+      if (libraryMode == Mode.USE_SYSTEM_LIB) {
+        extractionDir =
+                getApplicationsDir().resolve(Paths.get("me.bechberger.ap-loader",
+                        readSingleLineFromResource("libs/ap-version", "unknown-version")));
+      } else {
+        extractionDir =
+            getApplicationsDir().resolve(
+                Paths.get("me.bechberger.ap-loader", getVersion()));
+      }
       if (Files.notExists(extractionDir)) {
         Files.createDirectories(extractionDir);
       }
@@ -152,26 +184,24 @@ public final class AsyncProfilerLoader {
   }
 
   /**
-   * Returns the version and platform suffix like {@code 3.0-linux-x64} or {@code 2.9-macos}
+   * Returns the version and platform suffix like {@code 4.0-linux-x64} or {@code 4.1-macos}
    *
+   * @return version and platform suffix if the library is included, null otherwise (when in mode USE_SYSTEM_LIB)
    * @throws IllegalStateException if OS or Arch not supported
    */
   private static String getVersionAndPlatformSuffix() throws OSNotSupportedException {
+    if (libraryMode == Mode.USE_SYSTEM_LIB) {
+        return null;
+    }
     if (versionAndPlatformSuffix == null) {
       String version = getVersion();
-      boolean versionOne = version.startsWith("1.");
-      boolean versionThree = version.startsWith("3.");
       String os = System.getProperty("os.name").toLowerCase();
       String arch = System.getProperty("os.arch").toLowerCase();
       if (os.startsWith("linux")) {
         if (arch.equals("arm64") || arch.equals("aarch64")) {
           versionAndPlatformSuffix = version + "-linux-arm64";
-        } else if (arch.equals("x86") && versionOne) {
-          versionAndPlatformSuffix = version + "-linux-x86";
         } else if (arch.equals("x86_64") || arch.equals("x64") || arch.equals("amd64")) {
-          if (versionThree) {
-            versionAndPlatformSuffix = version + "-linux-x64";
-          } else if (isOnMusl()) {
+          if (isOnMusl()) {
             versionAndPlatformSuffix = version + "-linux-x64-musl";
           } else {
             versionAndPlatformSuffix = version + "-linux-x64";
@@ -180,14 +210,7 @@ public final class AsyncProfilerLoader {
           throw new OSNotSupportedException("Async-profiler does not work on Linux " + arch);
         }
       } else if (os.startsWith("macosx") || os.startsWith("mac os x")) {
-        if (versionOne) {
-          if (!arch.contains("x86")) {
-            throw new OSNotSupportedException("Async-profiler does not work on MacOS " + arch);
-          }
-          versionAndPlatformSuffix = version + "-macosx-x86";
-        } else {
-          versionAndPlatformSuffix = version + "-macos";
-        }
+        versionAndPlatformSuffix = version + "-macos";
       } else {
         throw new OSNotSupportedException("Async-profiler does not work on " + os);
       }
@@ -197,6 +220,9 @@ public final class AsyncProfilerLoader {
 
   /** Get available versions of the library */
   public static List<String> getAvailableVersions() {
+    if (libraryMode == Mode.USE_SYSTEM_LIB) {
+        return Collections.emptyList();
+    }
     if (availableVersions == null) {
       availableVersions = new ArrayList<>();
 
@@ -251,9 +277,13 @@ public final class AsyncProfilerLoader {
    * Returns the version of the included async-profiler library (or the version set by {@link
    * #setVersion(String)}
    *
+   * @return version of async-profiler or null if none is included
    * @throws IllegalStateException if the version could not be determined
    */
   public static String getVersion() {
+    if (libraryMode == Mode.USE_SYSTEM_LIB) {
+        return null;
+    }
     if (version == null) {
       if (getAvailableVersions().size() > 1) {
         throw new IllegalStateException(
@@ -275,7 +305,15 @@ public final class AsyncProfilerLoader {
     }
   }
 
+    /**
+     * Return the file name of the async-profiler library for the current OS, architecture and glibc
+     * @return async-profiler library file name or null if none is included
+     * @throws OSNotSupportedException if OS or Arch are not supported
+     */
   private static String getAsyncProfilerFileName() throws OSNotSupportedException {
+    if (libraryMode == Mode.USE_SYSTEM_LIB) {
+        return null;
+    }
     return readFirstPropertyFileLine(
         PROFILE_LIB_PROPERTY_FILE_PREFIX + getVersionAndPlatformSuffix());
   }
@@ -291,14 +329,6 @@ public final class AsyncProfilerLoader {
 
   private static String getExtractedAsyncProfilerFile() throws OSNotSupportedException {
     return "lib/libasyncProfiler" + getLibrarySuffix(getAsyncProfilerFileName());
-  }
-
-  private static String getJattachFileName() throws OSNotSupportedException {
-    return "jattach-" + getVersionAndPlatformSuffix();
-  }
-
-  private static String getJfrconvFileName() throws OSNotSupportedException {
-    return "jfrconv-" + getVersionAndPlatformSuffix();
   }
 
   private static String getProfilerFileName() throws OSNotSupportedException {
@@ -331,6 +361,44 @@ public final class AsyncProfilerLoader {
   }
 
   /**
+   * Checks if an async-profiler native library exists on the system in common library paths or is included in the
+   * currently used JVM
+   * @return the absolute path of the native library if found, null otherwise
+   */
+  private static Path findNativeLibrary() {
+      System.getProperty("java.home");
+      List<Path> locations = new ArrayList<>();
+      locations.add(Paths.get(System.getProperty("java.home"), "lib"));
+      locations.add(Paths.get(System.getProperty("java.home"), "lib", "server"));
+      String ldLibraryPath = System.getenv("LD_LIBRARY_PATH");
+      if (ldLibraryPath != null && !ldLibraryPath.isEmpty()) {
+        String[] paths = ldLibraryPath.split(File.pathSeparator);
+        for (String p : paths) {
+            locations.add(Paths.get(p));
+        }
+      }
+      return locations.stream().map(p -> {
+        for (String fileName : new String[] { "libasyncProfiler.so", "libasyncProfiler.dylib" }) {
+          if (p.endsWith(fileName)) {
+            return p;
+          }
+          if (p.resolve(fileName).toFile().exists()) {
+            return p.resolve(fileName);
+          }
+        }
+        return null;
+      }).filter(Objects::nonNull).findFirst().orElse(null);
+  }
+
+  /**
+   * Checks if an async-profiler native library exists on the system in common library paths or is included in the
+   * currently used JVM
+   */
+  public static boolean doesNativeLibraryExistOnSystem() {
+    return systemLibName != null;
+  }
+
+  /**
    * Checks if an async-profiler library for the current OS, architecture and glibc is available in
    * this JAR.
    *
@@ -338,6 +406,9 @@ public final class AsyncProfilerLoader {
    */
   public static boolean isSupported() {
     try {
+      if (libraryMode == Mode.USE_SYSTEM_LIB) {
+          return systemLibName != null;
+      }
       return hasFileInResources(PROFILE_LIB_PROPERTY_FILE_PREFIX + getVersionAndPlatformSuffix());
     } catch (OSNotSupportedException e) {
       return false;
@@ -389,10 +460,6 @@ public final class AsyncProfilerLoader {
    *
    * <p>If the file is extracted, then it is copied to a new temporary folder which is deleted upon
    * JVM exit.
-   *
-   * <p>This method is mainly seen as a helper method to obtain custom native agents for {@link
-   * #jattach(Path)} and {@link #jattach(Path, String)}. It is included in ap-loader to make it
-   * easier to write applications that need custom native libraries.
    *
    * <p>This method works on all architectures.
    *
@@ -471,53 +538,17 @@ public final class AsyncProfilerLoader {
   }
 
   /**
-   * Extracts the jattach tool
-   *
-   * @return path to the extracted jattach tool
-   * @throws IllegalStateException if OS or arch are not supported
-   * @throws IOException if the extraction fails
+   * Unsupported operation, use 'asprof load' command to use jattach functionality
    */
   public static Path getJattachPath() throws IOException {
-    if (extractedJattach == null) {
-      Path path = null;
-      try {
-        path =
-            copyFromResources(
-                getJattachFileName(), getExtractionDirectory().resolve(getJattachFileName()));
-      } catch (OSNotSupportedException e) {
-        throw new IllegalStateException(e.getMessage());
-      }
-      if (!path.toFile().setExecutable(true)) {
-        throw new IOException("Could not make jattach (" + path + ") executable");
-      }
-      extractedJattach = path;
-    }
-    return extractedJattach;
+    throw new UnsupportedOperationException("Use 'asprof load' command to use jattach functionality");
   }
 
   /**
-   * Extracts the jfrconv tool
-   *
-   * @return path to the extracted jfrconv tool
-   * @throws IllegalStateException if OS or arch are not supported
-   * @throws IOException if the extraction fails
+   * Unsupported operation, use 'asprof jfrconv' command to use jfrconv functionality
    */
   public static Path getJfrconvPath() throws IOException {
-    if (extractedJfrconv == null) {
-      Path path = null;
-      try {
-        path =
-                copyFromResources(
-                        getJfrconvFileName(), getExtractionDirectory().resolve(getJfrconvFileName()));
-      } catch (OSNotSupportedException e) {
-        throw new IllegalStateException(e.getMessage());
-      }
-      if (!path.toFile().setExecutable(true)) {
-        throw new IOException("Could not make jfrconv (" + path + ") executable");
-      }
-      extractedJfrconv = path;
-    }
-    return extractedJfrconv;
+    throw new UnsupportedOperationException("Use 'asprof jfrconv' command to use jfrconv functionality");
   }
 
   private static String getExtractedProfilerFile() throws OSNotSupportedException {
@@ -533,6 +564,25 @@ public final class AsyncProfilerLoader {
    */
   private static Path getProfilerPath() throws IOException {
     if (extractedProfiler == null) {
+      if (libraryMode == Mode.USE_SYSTEM_LIB) {
+        List<Path> locations = new ArrayList<>();
+        locations.add(Paths.get(System.getProperty("java.home"), "bin"));
+        String pathEnv = System.getenv("PATH");
+        if (pathEnv != null && !pathEnv.isEmpty()) {
+          String[] paths = pathEnv.split(File.pathSeparator);
+          for (String p : paths) {
+            locations.add(Paths.get(p));
+          }
+        }
+        for (Path location : locations) {
+          Path candidate = location.resolve("asprof");
+          if (candidate.toFile().exists()) {
+            extractedAsyncProfiler = candidate;
+            return extractedAsyncProfiler;
+          }
+        }
+        throw new IllegalStateException("Could not find asprof binary in java.home/bin or PATH");
+      }
       Path path;
       try {
         Path extracted = getExtractionDirectory().resolve(getExtractedProfilerFile());
@@ -550,14 +600,20 @@ public final class AsyncProfilerLoader {
   }
 
   /**
-   * Extracts the async-profiler and returns the path to the extracted file.
+   * Extracts the async-profiler library and returns the path to the extracted file (or the installed library in SYSTEM_LIB mode).
    *
    * @return the path to the extracted library
    * @throws IOException if the library could not be loaded
-   * @throws IllegalStateException if OS or Arch are not supported
+   * @throws IllegalStateException if OS or Arch are not supported, or if the library could not be found (in SYSTEM_LIB mode)
    */
   public static Path getAsyncProfilerPath() throws IOException {
     if (extractedAsyncProfiler == null) {
+      if (libraryMode == Mode.USE_SYSTEM_LIB) {
+        if (systemLibName == null) {
+          throw new IllegalStateException("No async-profiler native library found on the system");
+        }
+        return systemLibName;
+      }
       try {
         Path extracted = getExtractionDirectory().resolve(getExtractedAsyncProfilerFile());
         Files.createDirectories(extracted.getParent());
@@ -599,14 +655,18 @@ public final class AsyncProfilerLoader {
 
   private static String[] processJattachArgs(String[] args) throws IOException {
     List<String> argList = new ArrayList<>(Arrays.asList(args));
-    if (argList.size() >= 4
+    if (argList.size() >= 3
         && argList.get(1).equals("load")
         && (argList.get(2).endsWith("libasyncProfiler.so")
             || argList.get(2).endsWith("libasyncProfiler.dylib"))) {
       argList.set(2, getAsyncProfilerPath().toString());
-      argList.set(3, "true");
+      if (argList.size() == 3) {
+        argList.add("true");
+      } else {
+        argList.set(3, "true");
+      }
     }
-    argList.add(0, getJattachPath().toString());
+    argList.add(0, getProfilerPath().toString());
     return argList.toArray(new String[0]);
   }
 
@@ -620,17 +680,21 @@ public final class AsyncProfilerLoader {
    *
    * <p>Use the {@link #jattach(Path)} or {@link #jattach(Path, String)} to load agents via jattach
    * directly, without the need to construct the command line arguments yourself.
+   * <p>It requires the first argument to be the PID of the target JVM and the second "load"
    *
    * @throws IOException if something went wrong (e.g. the jattach binary is not found or the
    *     execution fails)
    * @throws IllegalStateException if OS or Arch are not supported
    */
   public static ExecutionResult executeJattach(String... args) throws IOException {
-    return executeCommand("jattach", processJattachArgs(args));
+    if (args.length < 2 || !args[1].equals("load")) {
+      throw new IllegalArgumentException("The jattach command requires at least two arguments: <PID> load ...");
+    }
+    return executeCommand("asprof", processJattachArgs(args));
   }
 
   private static void executeJattachInteractively(String[] args) throws IOException {
-    executeCommandInteractively("jattach", processJattachArgs(args));
+    executeCommandInteractively("asprof", processJattachArgs(args));
   }
 
   /**
@@ -673,14 +737,6 @@ public final class AsyncProfilerLoader {
     }
   }
 
-  private static String[] processConverterArgs(String[] args) throws IOException {
-    List<String> newArgs = new ArrayList<>();
-    newArgs.add(getJfrconvPath().toString());
-    newArgs.addAll(Arrays.asList(args));
-    System.out.println(newArgs);
-    return newArgs.toArray(new String[0]);
-  }
-
   /**
    * See <a
    * href="https://github.com/async-profiler/async-profiler/blob/master/docs/ConverterUsage.md">Converter Usage</a>
@@ -692,19 +748,34 @@ public final class AsyncProfilerLoader {
    * @throws IllegalStateException if OS or Arch are not supported
    */
   public static ExecutionResult executeConverter(String... args) throws IOException {
-    return executeCommand("jfrconv", processConverterArgs(args));
+    PrintStream oldOut = System.out;
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    System.setOut(new PrintStream(baos));
+    PrintStream oldErr = System.err;
+    ByteArrayOutputStream errBaos = new ByteArrayOutputStream();
+    System.setErr(new PrintStream(errBaos));
+    try {
+      one.converter.Main.main(args);
+    } catch (Exception e) {
+      throw new IOException(e);
+    } finally {
+      System.setOut(oldOut);
+      System.setErr(oldErr);
+    }
+    return new ExecutionResult(baos.toString(), errBaos.toString());
   }
 
   private static void executeConverterInteractively(String[] args) throws IOException {
-    executeCommandInteractively("jfrconv", processConverterArgs(args));
+      try {
+          one.converter.Main.main(args);
+      } catch (Exception e) {
+          throw new IOException(e);
+      }
   }
 
   private static String[] getEnv() throws IOException {
-    if (getVersion().startsWith("3.")) {
-      return new String[0];
-    }
     return new String[] {
-      "JATTACH=" + getJattachPath().toString(), "PROFILER=" + getAsyncProfilerPath()
+      "PROFILER=" + getAsyncProfilerPath()
     };
   }
 
@@ -723,22 +794,6 @@ public final class AsyncProfilerLoader {
 
   private static String[] processProfilerArgs(String[] args) throws IOException {
     List<String> argList = new ArrayList<>();
-    if (isShellFile(getProfilerPath())) {
-      argList.add("sh");
-    }
-    if (getVersion().startsWith("3.") && Arrays.asList(args).contains("--lib")) {
-      // --lib changed from `--lib path        full path to libasyncProfiler.so in the container`
-      // to `-l, --lib         prepend library names`
-      // check that this is followed by a non argument, as `--lib` has a new meaning
-      int index = Arrays.asList(args).indexOf("--lib");
-      if (index + 1 < args.length
-          && !args[index + 1].startsWith("-")
-          && isPossibleLibraryArgument(args[index + 1])) {
-        throw new UnsupportedOperationException(
-            "The `--lib path` option is not supported in async-profiler 3.x. "
-                + "Feel free to create an issue at https://github.com/jvm-profiling-tools/ap-loader/issues if you need support for this option.");
-      }
-    }
     argList.add(getProfilerPath().toString());
     argList.addAll(Arrays.asList(args));
     return argList.toArray(new String[0]);
@@ -927,10 +982,9 @@ public final class AsyncProfilerLoader {
     out.println("Commands:");
     out.println("  help         show this help");
     if (isSupported()) {
-      out.println("  jattach      run the included jattach binary");
       out.println("  profiler     run the included asprof");
+      out.println("  jattach      run 'asprof', but 'asprof load' works like 'jattach load'");
       out.println("  agentpath    prints the path of the extracted async-profiler agent");
-      out.println("  jattachpath  prints the path of the extracted jattach binary");
     }
     out.println("  supported    fails if this JAR does not include a profiler");
     out.println("               for the current OS and architecture");
@@ -944,7 +998,6 @@ public final class AsyncProfilerLoader {
       case "jattach":
       case "profiler":
       case "agentpath":
-      case "jattachpath":
         if (!isSupported()) {
           System.err.println(
               "The "
@@ -954,6 +1007,9 @@ public final class AsyncProfilerLoader {
           System.exit(1);
         }
         break;
+      case "jattachpath":
+        System.err.println("The jattachpath command is not available, use 'asprof load' instead");
+        System.exit(1);
       default:
         break;
     }
@@ -976,9 +1032,6 @@ public final class AsyncProfilerLoader {
         break;
       case "agentpath":
         System.out.println(getAsyncProfilerPath());
-        break;
-      case "jattachpath":
-        System.out.println(getJattachPath());
         break;
       case "supported":
         if (!isSupported()) {
