@@ -1,7 +1,7 @@
 Loader for AsyncProfiler
 ========================
 
-[![Maven Central](https://img.shields.io/maven-central/v/me.bechberger/ap-loader-all)](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.3-11) [![GitHub](https://img.shields.io/github/license/jvm-profiling-tools/ap-loader)](https://github.com/jvm-profiling-tools/ap-loader/blob/main/LICENSE)
+[![Maven Central](https://img.shields.io/maven-central/v/me.bechberger/ap-loader-all)](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.3-12) [![GitHub](https://img.shields.io/github/license/jvm-profiling-tools/ap-loader)](https://github.com/jvm-profiling-tools/ap-loader/blob/main/LICENSE)
 
 Packages [async-profiler](https://github.com/jvm-profiling-tools/async-profiler) releases in a JAR
 with an `AsyncProfilerLoader` (version 4.*, old releases up to -9 support 3.*, 2.* and 1.8.*)
@@ -50,11 +50,11 @@ from maven central, e.g:
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader-all</artifactId>
-    <version>4.3-11</version>
+    <version>4.3-12</version>
 </dependency>
 ```
 
-Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.3.1-11).
+Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.3.1-12).
 
 You can also use [JBang](https://jbang.dev) to simplify the usage of ap-loader. There are examples in documentation below.
 
@@ -235,7 +235,7 @@ The latest `all` version can be added via:
 <dependency>
   <groupId>me.bechberger</groupId>
   <artifactId>ap-loader-all</artifactId>
-  <version>4.3-11</version>
+  <version>4.3-12</version>
 </dependency>
 ```
 
@@ -254,11 +254,11 @@ python3 ./bin/releaser.py download 4.3
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.vversion=4.3 -Dproject.subrelease=11 -Dproject.platform=macos package assembly:single
+mvn -Dproject.vversion=4.3 -Dproject.subrelease=12 -Dproject.platform=macos package assembly:single
 # use it
-java -jar target/ap-loader-macos-4.3-11-full.jar ...
+java -jar target/ap-loader-macos-4.3-12-full.jar ...
 # build the all JAR
-mvn -Dproject.vversion=4.3 -Dproject.subrelease=11 -Dproject.platform=all package assembly:single
+mvn -Dproject.vversion=4.3 -Dproject.subrelease=12 -Dproject.platform=all package assembly:single
 ```
 
 Development
@@ -302,6 +302,9 @@ And the following for a new async-profiler release:
 
 Changelog
 ---------
+
+### v13
+- Fix bug in `AsyncProfilerLoader.getVersion()` that caused it to return the same version number twice and crash
 
 ### v12
 - Remove `jattachpath` subcommand

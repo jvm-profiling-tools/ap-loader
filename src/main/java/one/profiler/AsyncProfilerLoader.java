@@ -244,7 +244,7 @@ public final class AsyncProfilerLoader {
         return Collections.emptyList();
       }
     }
-    return availableVersions;
+    return availableVersions.stream().distinct().collect(Collectors.toList());
   }
 
   /**
