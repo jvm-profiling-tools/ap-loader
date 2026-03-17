@@ -20,12 +20,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Union, Tuple, Optional
 from urllib import request
 
-SUB_VERSION = 12
-RELEASE_NOTES = """- Remove `jattachpath` subcommand
-- Don't ship `jattach` binary anymore
-- Add `none` build which doesn't include any native binaries or libraries
-- Don't ship an extra `jfrconv` binary anymore, use the converter API instead
-- All this gives us a smaller JAR size for [SapMachine](https://sapmachine.io) users
+SUB_VERSION = 13
+RELEASE_NOTES = """- Fix bug in `AsyncProfilerLoader.getVersion()` that caused it to return the same version number twice and crash
 """
 
 HELP = """
