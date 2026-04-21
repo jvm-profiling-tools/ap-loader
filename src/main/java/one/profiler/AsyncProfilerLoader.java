@@ -755,9 +755,7 @@ public final class AsyncProfilerLoader {
     ByteArrayOutputStream errBaos = new ByteArrayOutputStream();
     System.setErr(new PrintStream(errBaos));
     try {
-      one.converter.Main.main(args);
-    } catch (Exception e) {
-      throw new IOException(e);
+      executeConverterInteractively(args);
     } finally {
       System.setOut(oldOut);
       System.setErr(oldErr);
@@ -767,7 +765,13 @@ public final class AsyncProfilerLoader {
 
   private static void executeConverterInteractively(String[] args) throws IOException {
       try {
-          one.converter.Main.main(args);
+        try {
+          Class<?> mainClass = Class.forName("one.converter.Main");
+          mainClass.getMethod("main", String[].class).invoke(null, (Object) args);
+        } catch (ClassNotFoundException e) {
+          Class<?> mainClass = Class.forName("one.convert.Main");
+          mainClass.getMethod("main", String[].class).invoke(null, (Object) args);
+        }
       } catch (Exception e) {
           throw new IOException(e);
       }
