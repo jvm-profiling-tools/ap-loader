@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Union, Tuple, Optional
 from urllib import request
 
 SUB_VERSION = 13
-RELEASE_NOTES = """- Fix bug in `AsyncProfilerLoader.getVersion()` that caused it to return the same version number twice and crash
+RELEASE_NOTES = """- Support async-profiler 4.5
 """
 
 HELP = """
