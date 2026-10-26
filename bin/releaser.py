@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Union, Tuple, Optional
 from urllib import request
 
-SUB_VERSION = 13
-RELEASE_NOTES = """- Support async-profiler 4.5
+SUB_VERSION = 14
+RELEASE_NOTES = """- Support async-profiler 4.6
 """
 
 HELP = """
@@ -132,7 +132,7 @@ def get_releases(tool: Tool) -> List[Dict[str, Any]]:
     """ Return the releases of async-profiler from the GitHub API """
     if tool == Tool.ASYNC_PROFILER:
         return download_json(
-            "https://api.github.com/repos/jvm-profiling-tools/async-profiler/releases",
+            "https://api.github.com/repos/async-profiler/async-profiler/releases",
             "releases.json")
     else:
         raise Exception("Unknown tool: " + tool.name)
@@ -227,7 +227,7 @@ def download_release_code(release: str):
     archive_file = dest_folder + ".zip"
     if not os.path.exists(archive_file):
         request.urlretrieve(
-            f"https://github.com/jvm-profiling-tools/async-profiler/archive/refs/tags/v{release}.zip",
+            f"https://github.com/async-profiler/async-profiler/archive/refs/tags/v{release}.zip",
             archive_file)
     execute(["unzip", "-o", archive_file, "-d", f"{CURRENT_DIR}/ap-releases"])
     shutil.rmtree(dest_folder, ignore_errors=True)
