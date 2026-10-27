@@ -1,9 +1,9 @@
 Loader for AsyncProfiler
 ========================
 
-[![Maven Central](https://img.shields.io/maven-central/v/me.bechberger/ap-loader-all)](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.4-13) [![GitHub](https://img.shields.io/github/license/jvm-profiling-tools/ap-loader)](https://github.com/jvm-profiling-tools/ap-loader/blob/main/LICENSE)
+[![Maven Central](https://img.shields.io/maven-central/v/me.bechberger/ap-loader-all)](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.6-14) [![GitHub](https://img.shields.io/github/license/jvm-profiling-tools/ap-loader)](https://github.com/jvm-profiling-tools/ap-loader/blob/main/LICENSE)
 
-Packages [async-profiler](https://github.com/jvm-profiling-tools/async-profiler) releases in a JAR
+Packages [async-profiler](https://github.com/async-profiler/async-profiler) releases in a JAR
 with an `AsyncProfilerLoader` (version 4.*, old releases up to -9 support 3.*, 2.* and 1.8.*)
 that loads the suitable native library for the current platform.
 
@@ -50,11 +50,11 @@ from maven central, e.g:
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>ap-loader-all</artifactId>
-    <version>4.4-13</version>
+    <version>4.6-14</version>
 </dependency>
 ```
 
-Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.4.1-13).
+Others are of course available, see [maven central](https://central.sonatype.com/artifact/me.bechberger/ap-loader-all/4.6-14).
 
 You can also use [JBang](https://jbang.dev) to simplify the usage of ap-loader. There are examples in documentation below.
 
@@ -136,7 +136,7 @@ java -jar ap-loader.jar profiler -d <n> <pid>
 java -jar ap-loader.jar profiler -e alloc,cpu,lock -f <file.jfr> <pid>
 ```
 
-See the [GitHub page of async-profiler](https://github.com/jvm-profiling-tools/async-profiler) for more details.
+See the [GitHub page of async-profiler](https://github.com/async-profiler/async-profiler) for more details.
 
 ### supported
 
@@ -156,7 +156,7 @@ java -jar ap-loader.jar converter jfr2flame <input.jfr> <output.html>
 
 The available converters depend on the included async-profiler version.
 Call `java -jar ap-loader.jar converter` to a list of available converters, see
-[the source code on GitHub](https://github.com/jvm-profiling-tools/async-profiler/blob/master/src/converter/Main.java)
+[the source code on GitHub](https://github.com/async-profiler/async-profiler/blob/master/src/converter/Main.java)
 for more details.
 
 ### clear
@@ -184,7 +184,7 @@ With JBang you can do:
 jbang --javaagent:ap-loader@jvm-profiling-tools/ap-loader=start,event=cpu,file=profile.html <java arguments>
 ```
 
-See the [GitHub page of async-profiler](https://github.com/jvm-profiling-tools/async-profiler) for more details.
+See the [GitHub page of async-profiler](https://github.com/async-profiler/async-profiler) for more details.
 
 Usage in Java Code
 ------------------
@@ -196,7 +196,7 @@ AsyncProfiler profiler = one.profiler.AsyncProfilerLoader.load();
 ```
 
 `AsyncProfiler` is
-the [main API class](https://github.com/jvm-profiling-tools/async-profiler/blob/master/src/api/one/profiler/AsyncProfiler.java)
+the [main API class](https://github.com/async-profiler/async-profiler/blob/master/src/api/one/profiler/AsyncProfiler.java)
 from the async-profiler.jar.
 
 The API of the `AsyncProfilerLoader` can be used to execute all commands of the CLI programmatically.
@@ -232,7 +232,7 @@ The latest `all` version can be added via:
 <dependency>
   <groupId>me.bechberger</groupId>
   <artifactId>ap-loader-all</artifactId>
-  <version>4.4-13</version>
+  <version>4.6-14</version>
 </dependency>
 ```
 
@@ -246,16 +246,16 @@ It requires a platform supported by async-profiler and Python 3.6+.
 
 ```sh
 # download the release sources and binaries
-python3 ./bin/releaser.py download 4.4
+python3 ./bin/releaser.py download 4.6
 
 # build the JAR for the release
 # maven might throw warnings, related to the project version setting,
 # but the alternative solutions don't work, so we ignore the warning for now
-mvn -Dproject.vversion=4.4 -Dproject.subrelease=13 -Dproject.platform=macos package assembly:single
+mvn -Dproject.vversion=4.6 -Dproject.subrelease=14 -Dproject.platform=macos package assembly:single
 # use it
-java -jar target/ap-loader-macos-4.4-13-full.jar ...
+java -jar target/ap-loader-macos-4.6-14-full.jar ...
 # build the all JAR
-mvn -Dproject.vversion=4.4 -Dproject.subrelease=13 -Dproject.platform=all package assembly:single
+mvn -Dproject.vversion=4.6 -Dproject.subrelease=14 -Dproject.platform=all package assembly:single
 ```
 
 Development
@@ -299,6 +299,9 @@ And the following for a new async-profiler release:
 
 Changelog
 ---------
+
+### v14
+- Support async-profiler 4.5 and 4.6
 
 ### v13
 - Fix bug in `AsyncProfilerLoader.getVersion()` that caused it to return the same version number twice and crash
